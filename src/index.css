@@ -1,0 +1,216 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design Tokens ─────────────────────────────────────────────────────── */
+:root {
+  --navy:     #003366;
+  --blue:     #0066B3;
+  --blue-mid: #1A7CC7;
+  --teal:     #0099A8;
+  --white:    #FFFFFF;
+  --grey-0:   #F0F4F8;
+  --grey-1:   #DDE4ED;
+  --grey-2:   #A8B8CC;
+  --grey-3:   #4A5568;
+  --ink:      #1A2740;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html, body, #root {
+    height: 100%;
+    min-height: 100%;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14px;
+    background-color: var(--grey-0);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 600;
+    color: var(--navy);
+    line-height: 1.15;
+  }
+}
+
+/* ── Component Classes ─────────────────────────────────────────────────── */
+@layer components {
+
+  /* Cards */
+  .card {
+    background: white;
+    border-top: 2px solid var(--grey-1);
+    padding: 24px;
+  }
+  .card-blue  { background: white; border-top: 2px solid var(--blue);  padding: 24px; }
+  .card-navy  { background: white; border-top: 2px solid var(--navy);  padding: 24px; }
+  .card-teal  { background: white; border-top: 2px solid var(--teal);  padding: 24px; }
+
+  /* Typography */
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--grey-1);
+  }
+
+  .section-heading {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .section-sub {
+    font-size: 13px;
+    color: var(--grey-3);
+    line-height: 1.65;
+    margin-bottom: 24px;
+    max-width: 640px;
+  }
+
+  .stat-num {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 36px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--navy);
+  }
+
+  /* Placeholder blocks (shell state) */
+  .placeholder-zone {
+    background: var(--grey-0);
+    border: 1px dashed var(--grey-2);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 120px;
+    text-align: center;
+  }
+  .placeholder-zone-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--grey-2);
+  }
+  .placeholder-zone-desc {
+    font-size: 12px;
+    color: var(--grey-2);
+    line-height: 1.5;
+    max-width: 260px;
+  }
+
+  /* Highlight box */
+  .hl-box {
+    background: #DBEAFE;
+    border-left: 3px solid var(--blue);
+    padding: 14px 18px;
+    font-size: 12.5px;
+    color: var(--navy);
+    line-height: 1.65;
+  }
+
+  /* Tags / Pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .pill-blue  { background: #EBF4FF; color: var(--blue); }
+  .pill-navy  { background: rgba(0,51,102,0.08); color: var(--navy); }
+  .pill-teal  { background: rgba(0,153,168,0.1); color: var(--teal); }
+  .pill-grey  { background: var(--grey-1); color: var(--grey-3); }
+  .pill-amber { background: #FEF3C7; color: var(--amber); }
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--grey-2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--grey-3); }
+
+/* ── Focus ring ────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* ── Range Inputs ──────────────────────────────────────────────────────── */
+.fme-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--blue) 0%,
+    var(--blue) var(--fill-pct, 0%),
+    var(--grey-1) var(--fill-pct, 0%),
+    var(--grey-1) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+.fme-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2.5px solid var(--blue);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,102,179,0.25);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.fme-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2.5px solid var(--blue);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,102,179,0.25);
+}
+.fme-range:hover::-webkit-slider-thumb,
+.fme-range:focus::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0,102,179,0.35);
+}
+.fme-range::-webkit-slider-runnable-track { border-radius: 3px; }
+.fme-range::-moz-range-track { height: 5px; border-radius: 3px; }
