@@ -89,7 +89,7 @@ function sourceLabel(source: string): string {
   if (source === 'fme-reported') return 'FME REPORTED';
   if (source === 'adjusted') return 'FME ADJUSTED';
   if (source === 'user-input') return 'FME INPUT';
-  return 'ACCENTURE ESTIMATE';
+  return 'ILLUSTRATIVE';
 }
 
 function sourceDot(source: string): string {
@@ -514,7 +514,7 @@ export function ScenarioSummaryPanel({ open, onClose }: Props) {
             <SectionDivider>What Must Be True</SectionDivider>
             <div style={{ background: 'white', padding: '24px 28px', marginBottom: 28 }}>
               <div style={{ fontSize: 12, color: 'var(--grey-3)', marginBottom: 16, lineHeight: 1.6 }}>
-                The execution conditions implied by Martin's current scenario assumptions.
+                The execution conditions implied by your current scenario assumptions.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {whatMustBeTrue.map((condition, i) => (

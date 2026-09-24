@@ -1,33 +1,38 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useScenario } from '../state/ScenarioContext';
-import { PROGRAMS } from '../data/programs';
 import { OUTCOMES } from '../data/outcomes';
-import { ProgramId } from '../types';
+import { ProgramLibraryEntry } from '../types';
 
-const PROGRAM_COLORS: Record<ProgramId, { bg: string; border: string; accent: string }> = {
-  'esphora-cd':       { bg: '#EBF4FF', border: '#0066B3', accent: '#0066B3' },
-  'ehr-patient-care': { bg: '#E6F6F7', border: '#0099A8', accent: '#0099A8' },
-  'supply-chain':     { bg: '#F5F3FF', border: '#7C3AED', accent: '#7C3AED' },
-  'gemini':           { bg: '#FFF7ED', border: '#D97706', accent: '#D97706' },
-};
+const PALETTE = [
+  { bg: '#EBF4FF', border: '#0066B3', accent: '#0066B3' },
+  { bg: '#E6F6F7', border: '#0099A8', accent: '#0099A8' },
+  { bg: '#F5F3FF', border: '#7C3AED', accent: '#7C3AED' },
+  { bg: '#FFF7ED', border: '#D97706', accent: '#D97706' },
+  { bg: '#F0FDF4', border: '#16A34A', accent: '#16A34A' },
+  { bg: '#FFF1F2', border: '#E11D48', accent: '#E11D48' },
+];
+
+function getPaletteEntry(id: string, index: number) {
+  // Use deterministic color based on index in library
+  return PALETTE[index % PALETTE.length];
+}
 
 export default function BuildScenario() {
-  const { activeScenario, dispatch } = useScenario();
+  const { activeScenario, state, dispatch } = useScenario();
+  const navigate = useNavigate();
   const { selectedPrograms } = activeScenario;
+  const library = state.programLibrary;
 
-  const integratedPrograms = selectedPrograms;
-  const separatePrograms = PROGRAMS.filter((p) => !selectedPrograms.includes(p.id));
-
-  const coveredOutcomes = OUTCOMES.filter((o) =>
-    o.programs.some((pid) => selectedPrograms.includes(pid))
-  );
+  const integratedPrograms = library.filter((p) => selectedPrograms.includes(p.id));
+  const separatePrograms = library.filter((p) => !selectedPrograms.includes(p.id));
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 40px 80px' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 36 }}>
-        <div className="eyebrow">02 — Build Your Scenario</div>
+        <div className="eyebrow">03 — Build Your Scenario</div>
         <h1 className="section-heading">
           Which programs do you want to bring under one integrated design?
         </h1>
@@ -75,11 +80,12 @@ export default function BuildScenario() {
               Select programs below to include them in the integrated design
             </div>
           ) : (
-            PROGRAMS.filter((p) => selectedPrograms.includes(p.id)).map((p) => (
+            integratedPrograms.map((p, i) => (
               <ProgramCard
                 key={p.id}
                 program={p}
                 selected
+                colorEntry={getPaletteEntry(p.id, library.findIndex((lp) => lp.id === p.id))}
                 onToggle={() => dispatch({ type: 'TOGGLE_PROGRAM', programId: p.id })}
               />
             ))
@@ -113,6 +119,7 @@ export default function BuildScenario() {
                 key={p.id}
                 program={p}
                 selected={false}
+                colorEntry={getPaletteEntry(p.id, library.findIndex((lp) => lp.id === p.id))}
                 onToggle={() => dispatch({ type: 'TOGGLE_PROGRAM', programId: p.id })}
               />
             ))}
@@ -126,10 +133,10 @@ export default function BuildScenario() {
           <div className="eyebrow">Enterprise Outcomes Addressed</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {OUTCOMES.map((outcome) => {
-              const covered = outcome.programs.some((pid) => selectedPrograms.includes(pid));
-              const contributing = PROGRAMS.filter(
-                (p) => selectedPrograms.includes(p.id) && outcome.programs.includes(p.id)
+              const contributing = integratedPrograms.filter((p) =>
+                (p.outcomes as string[]).includes(outcome.id)
               );
+              const covered = contributing.length > 0;
               return (
                 <div
                   key={outcome.id}
@@ -152,22 +159,25 @@ export default function BuildScenario() {
                     </div>
                     {covered && (
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        {contributing.map((p) => (
-                          <span
-                            key={p.id}
-                            style={{
-                              padding: '3px 8px',
-                              background: PROGRAM_COLORS[p.id].bg,
-                              color: PROGRAM_COLORS[p.id].accent,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              borderRadius: 4,
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {p.shortName}
-                          </span>
-                        ))}
+                        {contributing.map((p, pi) => {
+                          const colors = getPaletteEntry(p.id, library.findIndex((lp) => lp.id === p.id));
+                          return (
+                            <span
+                              key={p.id}
+                              style={{
+                                padding: '3px 8px',
+                                background: colors.bg,
+                                color: colors.accent,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                borderRadius: 4,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {p.shortName || p.name}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -181,25 +191,42 @@ export default function BuildScenario() {
             <div>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--teal)' }}>Ready to pressure-test your scenario?</div>
               <div style={{ fontSize: 12, color: 'var(--grey-3)', marginTop: 2 }}>
-                Set business assumptions, shared cost percentages, and timeline compression in the next section.
+                Set program-level assumptions, shared cost percentages, and timeline compression.
               </div>
             </div>
-            <a
-              href="/pressure-test"
+            <button
+              onClick={() => navigate('/pressure-test')}
               style={{
                 padding: '8px 20px',
                 background: 'var(--teal)',
+                border: 'none',
                 color: 'white',
                 fontSize: 12,
                 fontWeight: 600,
-                textDecoration: 'none',
+                cursor: 'pointer',
+                fontFamily: 'Inter, sans-serif',
                 borderRadius: 6,
                 whiteSpace: 'nowrap',
               }}
             >
               Pressure-Test →
-            </a>
+            </button>
           </div>
+        </div>
+      )}
+
+      {/* If library is empty, prompt to add programs */}
+      {library.length === 0 && (
+        <div style={{ padding: '48px 0', textAlign: 'center' }}>
+          <div style={{ fontSize: 13, color: 'var(--grey-3)', marginBottom: 16, lineHeight: 1.6 }}>
+            No programs in your library yet. Define your programs in Program Intake first, then return here to build your scenario.
+          </div>
+          <button
+            onClick={() => navigate('/intake')}
+            style={{ background: 'var(--blue)', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, padding: '10px 22px', cursor: 'pointer', borderRadius: 4, fontFamily: 'Inter, sans-serif' }}
+          >
+            Go to Program Intake →
+          </button>
         </div>
       )}
     </div>
@@ -247,13 +274,16 @@ function ZoneHeader({
 function ProgramCard({
   program,
   selected,
+  colorEntry,
   onToggle,
 }: {
-  program: (typeof PROGRAMS)[number];
+  program: ProgramLibraryEntry;
   selected: boolean;
+  colorEntry: { bg: string; border: string; accent: string };
   onToggle: () => void;
 }) {
-  const colors = PROGRAM_COLORS[program.id];
+  const colors = colorEntry;
+  const activeKpis = program.kpis.filter((k) => k.isActive).length;
 
   return (
     <div
@@ -285,7 +315,7 @@ function ProgramCard({
             {program.name}
           </div>
           <div style={{ fontSize: 11, color: 'var(--grey-2)' }}>
-            {program.defaultTimeline.durationMonths} months · {program.outcomes.length} outcomes
+            {program.defaultTimeline.durationMonths}mo · {activeKpis} KPI{activeKpis !== 1 ? 's' : ''}
           </div>
         </div>
         <div
@@ -312,13 +342,13 @@ function ProgramCard({
       </div>
 
       {/* Description */}
-      <p style={{ fontSize: 12, color: 'var(--grey-3)', lineHeight: 1.5, marginBottom: 10 }}>
-        {program.description}
+      <p style={{ fontSize: 12, color: 'var(--grey-3)', lineHeight: 1.5, marginBottom: 10, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+        {program.description || <span style={{ fontStyle: 'italic' }}>No description yet</span>}
       </p>
 
       {/* Outcome tags */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {program.outcomes.map((oid) => {
+        {(program.outcomes as string[]).map((oid) => {
           const o = OUTCOMES.find((out) => out.id === oid);
           if (!o) return null;
           return (
@@ -339,8 +369,8 @@ function ProgramCard({
         })}
       </div>
 
-      {/* Hypothesis (shown when selected) */}
-      {selected && (
+      {/* Program context (shown when selected) */}
+      {selected && program.description && (
         <div
           style={{
             marginTop: 10,
@@ -353,7 +383,7 @@ function ProgramCard({
             borderRadius: '0 4px 4px 0',
           }}
         >
-          {program.accentureHypothesis}
+          {program.additionalContext || program.description}
         </div>
       )}
     </div>

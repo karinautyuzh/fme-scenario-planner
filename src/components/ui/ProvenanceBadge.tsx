@@ -8,7 +8,7 @@ interface Props {
 
 const CONFIG: Record<AssumptionSource, { label: string; bg: string; color: string } | null> = {
   'fme-reported': { label: 'FME Reported', bg: '#E8F0FB', color: '#0066B3' },
-  'accenture-estimate': { label: 'Accenture Estimate', bg: '#E6F6F7', color: '#007380' },
+  'accenture-estimate': { label: 'Illustrative', bg: '#E6F6F7', color: '#007380' },
   'adjusted': { label: 'Adjusted', bg: '#FEF3C7', color: '#92400E' },
   'user-input': null,
   'unknown': null,

@@ -1,9 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PROGRAMS } from '../data/programs';
 import { OUTCOMES } from '../data/outcomes';
 import { useScenario } from '../state/ScenarioContext';
-import type { ProgramId } from '../types';
 
 const OUTCOME_COLORS: Record<string, string> = {
   'grow-patient-volume':         'var(--blue)',
@@ -12,8 +10,10 @@ const OUTCOME_COLORS: Record<string, string> = {
 };
 
 export function ExecutiveOverview() {
-  const { activeScenario } = useScenario();
+  const { activeScenario, state } = useScenario();
   const navigate = useNavigate();
+  const library = state.programLibrary;
+  const selectedPrograms = activeScenario.selectedPrograms;
 
   return (
     <div style={{ padding: '40px 40px 80px', maxWidth: 1200, margin: '0 auto' }}>
@@ -53,11 +53,10 @@ export function ExecutiveOverview() {
           <strong style={{ fontWeight: 600 }}>Modeled as one.</strong>
         </h1>
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.75, maxWidth: 560, marginBottom: 32 }}>
-          Four programs. Three enterprise outcomes. One design question: what changes when you
-          build them together rather than in parallel?
+          {library.length > 0 ? library.length : 'Multiple'} programs. Three enterprise outcomes. One design question: what changes when you build them together rather than in parallel?
         </p>
 
-        {/* Hypothesis callout */}
+        {/* Value hypothesis callout */}
         <div
           style={{
             background: 'rgba(255,255,255,0.07)',
@@ -68,7 +67,7 @@ export function ExecutiveOverview() {
           }}
         >
           <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 8 }}>
-            Accenture Hypothesis
+            The Value Hypothesis
           </div>
           <p style={{ fontFamily: 'Source Serif 4, serif', fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontWeight: 300, fontStyle: 'italic' }}>
             "Integrated design improves business outcomes{' '}
@@ -93,25 +92,31 @@ export function ExecutiveOverview() {
           </div>
         </FlowPanel>
 
-        <FlowPanel number="02" color="var(--teal)" title="Four Transformation Programs">
+        <FlowPanel number="02" color="var(--teal)" title="Transformation Programs">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {PROGRAMS.map((p) => {
-              const isActive = activeScenario.selectedPrograms.includes(p.id as ProgramId);
+            {library.map((p) => {
+              const isActive = selectedPrograms.includes(p.id);
               return (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 8, height: 8, borderRadius: 1, background: isActive ? 'var(--teal)' : 'var(--grey-1)', flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: isActive ? 'var(--navy)' : 'var(--grey-2)', fontWeight: isActive ? 600 : 400 }}>
-                    {p.shortName}
+                    {p.shortName || p.name}
                   </span>
                 </div>
               );
             })}
           </div>
-          {activeScenario.selectedPrograms.length === 0 && (
+          {selectedPrograms.length === 0 && (
             <div style={{ fontSize: 10, color: 'var(--grey-2)', fontStyle: 'italic', marginTop: 8 }}>
               No programs selected in current scenario
             </div>
           )}
+          <button
+            onClick={() => navigate('/intake')}
+            style={{ marginTop: 12, background: 'none', border: '1px dashed var(--teal)', color: 'var(--teal)', fontSize: 10, fontWeight: 600, padding: '5px 10px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', borderRadius: 3, width: '100%' }}
+          >
+            + Add Program
+          </button>
         </FlowPanel>
 
         <FlowPanel number="03" color="var(--navy)" title="Shared Dependencies">
@@ -186,12 +191,12 @@ export function ExecutiveOverview() {
         </div>
 
         {/* Rows */}
-        {PROGRAMS.map((p, idx) => {
-          const isSelected = activeScenario.selectedPrograms.includes(p.id as ProgramId);
+        {library.map((p, idx) => {
+          const isSelected = selectedPrograms.includes(p.id);
           return (
             <div
               key={p.id}
-              style={{ display: 'grid', gridTemplateColumns: '220px repeat(3, 1fr)', borderBottom: idx < PROGRAMS.length - 1 ? '1px solid var(--grey-1)' : 'none', background: isSelected ? '#FAFCFF' : 'white' }}
+              style={{ display: 'grid', gridTemplateColumns: '220px repeat(3, 1fr)', borderBottom: idx < library.length - 1 ? '1px solid var(--grey-1)' : 'none', background: isSelected ? '#FAFCFF' : 'white' }}
             >
               <div style={{ padding: '14px 16px', borderLeft: `3px solid ${isSelected ? 'var(--blue)' : 'var(--grey-1)'}` }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: isSelected ? 'var(--navy)' : 'var(--grey-3)', marginBottom: 2 }}>
@@ -206,7 +211,7 @@ export function ExecutiveOverview() {
                 )}
               </div>
               {OUTCOMES.map((o) => {
-                const contributes = p.outcomes.includes(o.id as any);
+                const contributes = (p.outcomes as string[]).includes(o.id);
                 return (
                   <div key={o.id} style={{ borderLeft: '1px solid var(--grey-1)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
                     {contributes && (
@@ -218,9 +223,23 @@ export function ExecutiveOverview() {
             </div>
           );
         })}
+
+        {/* Add Program row */}
+        <div
+          onClick={() => navigate('/intake')}
+          style={{ display: 'grid', gridTemplateColumns: '220px 1fr', borderTop: '1px dashed var(--grey-1)', cursor: 'pointer', background: '#FAFAFA' }}
+        >
+          <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--blue)', fontSize: 12, fontWeight: 600 }}>
+            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span>
+            Add Program to Portfolio
+          </div>
+          <div style={{ padding: '12px 16px', fontSize: 11, color: 'var(--grey-2)', display: 'flex', alignItems: 'center' }}>
+            Define a new program in Program Intake to include it here and in your scenario
+          </div>
+        </div>
       </div>
 
-      {/* ── Business Execution Office intro ── */}
+      {/* ── Execution Layer intro ── */}
       <SectionLabel>The Execution Layer</SectionLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
         <div style={{ background: 'white', borderTop: '3px solid var(--teal)', padding: '22px 26px' }}>
@@ -228,31 +247,29 @@ export function ExecutiveOverview() {
             Business Execution Office
           </div>
           <p style={{ fontSize: 12.5, color: 'var(--grey-3)', lineHeight: 1.65 }}>
-            The Accenture-designed execution model that makes integrated delivery possible. Not a
-            PMO — the connective structure that manages one enterprise business case, one sequencing
-            engine, one change agenda, and one value-realization cadence across all programs.
+            The execution model that makes integrated delivery possible. Not a PMO — the connective
+            structure that manages one enterprise business case, one sequencing engine, one change
+            agenda, and one value-realization cadence across all programs.
           </p>
           <button
             onClick={() => navigate('/realize')}
             style={{ marginTop: 14, background: 'none', border: '1px solid var(--teal)', color: 'var(--teal)', fontSize: 11, fontWeight: 600, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', borderRadius: 3 }}
           >
-            See how it connects to your scenario →
+            See the Value Realization Scorecard →
           </button>
         </div>
 
         <div style={{ background: 'var(--navy)', padding: '22px 26px' }}>
-          <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 15, fontWeight: 600, color: 'white', marginBottom: 14 }}>
-            Accenture provides the value architecture.
-          </div>
-          <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 18 }}>
-            FME authors the value journey.
+          <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 15, fontWeight: 600, color: 'white', marginBottom: 18 }}>
+            THIS TOOL ALLOWS YOU TO AUTHOR THE VALUE JOURNEY.
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {[
-              { step: '02', label: 'Choose which programs to integrate' },
-              { step: '03', label: 'Enter your assumptions and pressure-test them' },
-              { step: '04', label: 'Compare scenarios and understand the differences' },
-              { step: '05', label: 'Map the execution model to your scenario' },
+              { step: '02', label: 'Define your programs in Program Intake' },
+              { step: '03', label: 'Choose which programs to integrate in your scenario' },
+              { step: '04', label: 'Pressure-test your assumptions at the program level' },
+              { step: '05', label: 'Compare scenarios and understand what changed' },
+              { step: '06', label: 'Score your readiness and map the execution model' },
             ].map(({ step, label }) => (
               <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--teal)', width: 20, flexShrink: 0 }}>{step}</span>

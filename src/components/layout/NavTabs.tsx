@@ -2,10 +2,11 @@ import { NavLink } from 'react-router-dom';
 
 const TABS = [
   { path: '/',              label: 'Executive Overview',   number: '01' },
-  { path: '/build',         label: 'Build Your Scenario',  number: '02' },
-  { path: '/pressure-test', label: 'Pressure-Test',        number: '03' },
-  { path: '/compare',       label: 'Compare Value',        number: '04' },
-  { path: '/realize',       label: 'Realize the Value',    number: '05' },
+  { path: '/intake',        label: 'Program Intake',       number: '02' },
+  { path: '/build',         label: 'Build Your Scenario',  number: '03' },
+  { path: '/pressure-test', label: 'Pressure-Test',        number: '04' },
+  { path: '/compare',       label: 'Compare Value',        number: '05' },
+  { path: '/realize',       label: 'Value Realization',    number: '06' },
 ];
 
 export function NavTabs() {
@@ -22,7 +23,7 @@ export function NavTabs() {
         borderBottom: '1px solid var(--grey-1)',
         display: 'flex',
         alignItems: 'stretch',
-        padding: '0 40px',
+        padding: '0 32px',
         overflow: 'hidden',
       }}
     >
@@ -34,12 +35,12 @@ export function NavTabs() {
           style={({ isActive }) => ({
             display: 'flex',
             alignItems: 'center',
-            gap: 7,
-            padding: '0 20px',
+            gap: 6,
+            padding: '0 16px',
             borderBottom: isActive ? '2px solid var(--blue)' : '2px solid transparent',
             marginBottom: -1,
             textDecoration: 'none',
-            fontSize: 12,
+            fontSize: 11.5,
             fontWeight: isActive ? 600 : 500,
             color: isActive ? 'var(--blue)' : 'var(--grey-3)',
             whiteSpace: 'nowrap',
@@ -49,35 +50,22 @@ export function NavTabs() {
           })}
           onMouseEnter={(e) => {
             const el = e.currentTarget as HTMLElement;
-            if (!el.style.borderBottom.includes('var(--blue)')) {
-              el.style.color = 'var(--blue)';
-            }
+            if (!el.style.borderBottom.includes('var(--blue)')) el.style.color = 'var(--blue)';
           }}
           onMouseLeave={(e) => {
             const el = e.currentTarget as HTMLElement;
-            if (!el.style.borderBottom.includes('var(--blue)')) {
-              el.style.color = 'var(--grey-3)';
-            }
+            if (!el.style.borderBottom.includes('var(--blue)')) el.style.color = 'var(--grey-3)';
           }}
         >
-          <span
-            style={{
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: '0.12em',
-              opacity: 0.45,
-            }}
-          >
+          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', opacity: 0.45 }}>
             {tab.number}
           </span>
           {tab.label}
         </NavLink>
       ))}
 
-      {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Divider + Accenture label */}
       <div
         style={{
           display: 'flex',

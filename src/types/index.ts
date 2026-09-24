@@ -1,10 +1,6 @@
 // ─── Programs & Outcomes ────────────────────────────────────────────────────
 
-export type ProgramId =
-  | 'esphora-cd'
-  | 'ehr-patient-care'
-  | 'supply-chain'
-  | 'gemini';
+export type ProgramId = string;
 
 export type OutcomeId =
   | 'grow-patient-volume'
@@ -29,14 +25,68 @@ export interface EnterpriseOutcome {
   programs: ProgramId[];
 }
 
+// ─── Program KPIs ────────────────────────────────────────────────────────────
+
+export type KpiUnit = '%' | '€' | '$' | 'Days' | 'Volume' | 'Rate' | 'Other';
+
+export interface ProgramKPI {
+  id: string;
+  name: string;
+  baseline: string;
+  target: string;
+  unit: KpiUnit;
+  outcomeIds: OutcomeId[];
+  isCustom: boolean;
+  isActive: boolean;
+  context: string;
+}
+
+// ─── Program Library Entry ───────────────────────────────────────────────────
+
+export type ProgramStatus = 'planned' | 'in-design' | 'in-flight' | 'scaling';
+
+export interface ProgramLibraryEntry {
+  id: string;
+  name: string;
+  shortName: string;
+  description: string;
+  isBuiltIn: boolean;
+  status: ProgramStatus;
+  startTiming: string;
+  targetCompletion: string;
+  investmentEurM: Assumption<number>;
+  illustrativeValueEurM: Assumption<number>;
+  outcomes: OutcomeId[];
+  outcomePriorities: Partial<Record<OutcomeId, number>>;
+  kpis: ProgramKPI[];
+  dependencies: string[];
+  sharedWorkforce: boolean;
+  sharedData: boolean;
+  sharedTechnology: boolean;
+  sharedChangePopulation: boolean;
+  timingDependency: boolean;
+  dependencyContext: string;
+  integrationHypothesis: string;
+  defaultTimeline: { startMonth: number; durationMonths: number };
+  additionalContext: string;
+  notes: string;
+  costAssumptions: {
+    governanceCostBaseEurM: Assumption<number>;
+    changeCostBaseEurM: Assumption<number>;
+    trainingCostBaseEurM: Assumption<number>;
+    dataIntegrationCostBaseEurM: Assumption<number>;
+    programResourceCostBaseEurM: Assumption<number>;
+  };
+}
+
 // ─── Assumption Provenance ──────────────────────────────────────────────────
 
 export type AssumptionSource =
-  | 'fme-reported'       // FME confirmed value — editable baseline
-  | 'accenture-estimate' // Accenture starting hypothesis — fully editable
-  | 'user-input'         // Martin entered fresh value
-  | 'adjusted'           // Martin changed an FME/Accenture baseline
-  | 'unknown';           // No defensible value — empty editable placeholder
+  | 'fme-reported'
+  | 'accenture-estimate'
+  | 'user-input'
+  | 'adjusted'
+  | 'unknown';
 
 export interface Assumption<T = number> {
   value: T | null;
@@ -141,7 +191,6 @@ export interface BusinessOutcomeAssumptions {
   clinicProductivityImprovementPct: Assumption<number>;
   supplyWasteReductionPct: Assumption<number>;
   overallValueCapturePct: Assumption<number>;
-  // Program-specific KPIs (surfaced dynamically)
   noShowRateReductionPct: Assumption<number>;
   cancellationRateReductionPct: Assumption<number>;
   inventoryTurnsImprovementPct: Assumption<number>;
@@ -167,7 +216,7 @@ export type ValueRealizationSpeed = 'slower' | 'expected' | 'faster';
 export interface TransformationTimingAssumptions {
   compressionMonths: Assumption<number>;
   valueRealizationSpeed: Assumption<ValueRealizationSpeed>;
-  programStartMonths: Record<ProgramId, number>;
+  programStartMonths: Record<string, number>;
   rampToFullValueMonths: Assumption<number>;
 }
 
@@ -198,12 +247,12 @@ export interface ScenarioMetadata {
 export interface Scenario {
   metadata: ScenarioMetadata;
   isBaseCaseLocked: boolean;
-  selectedPrograms: ProgramId[];
+  selectedPrograms: string[];
   businessOutcomes: BusinessOutcomeAssumptions;
   sharedCosts: SharedCostAssumptions;
   timing: TransformationTimingAssumptions;
   financialBaselines: FinancialBaselines;
-  programInvestmentsEurM: Record<ProgramId, Assumption<number>>;
+  programInvestmentsEurM: Record<string, Assumption<number>>;
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────
@@ -211,6 +260,7 @@ export interface Scenario {
 export interface AppState {
   scenarios: Scenario[];
   activeScenarioId: string;
+  programLibrary: ProgramLibraryEntry[];
 }
 
-export const BASE_CASE_ID = 'accenture-base-case';
+export const BASE_CASE_ID = 'illustrative-base';

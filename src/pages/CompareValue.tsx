@@ -429,7 +429,7 @@ export function CompareValue() {
 
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <div className="eyebrow">04 — Compare Value</div>
+        <div className="eyebrow">05 — Compare Value</div>
         <h1 className="section-heading">Side-by-side scenario comparison</h1>
         <p className="section-sub">
           Compare up to 3 scenarios. Select scenarios below to see their assumptions, calculated
@@ -456,6 +456,14 @@ export function CompareValue() {
               <ScenarioCard key={scenario.metadata.id} scenario={scenario} engine={engine} color={color} index={i} />
             ))}
           </div>
+
+          {/* What Changed? */}
+          {selectedScenarios.length >= 2 && (
+            <>
+              <SectionLabel>What Changed?</SectionLabel>
+              <WhatChanged pairs={pairs} />
+            </>
+          )}
 
           {/* Comparison Table */}
           {selectedScenarios.length >= 2 && (
@@ -502,6 +510,87 @@ export function CompareValue() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+// ─── What Changed? ────────────────────────────────────────────────────────────
+
+function WhatChanged({ pairs }: { pairs: { scenario: Scenario; engine: ScenarioEngineOutput; color: string }[] }) {
+  const [a, b] = pairs;
+  if (!a || !b) return null;
+
+  const changes: { label: string; from: string; to: string; type: 'added' | 'removed' | 'changed' }[] = [];
+
+  // Programs added/removed
+  const aProgs = new Set(a.scenario.selectedPrograms);
+  const bProgs = new Set(b.scenario.selectedPrograms);
+  for (const id of bProgs) {
+    if (!aProgs.has(id)) changes.push({ label: 'Program added', from: '—', to: id, type: 'added' });
+  }
+  for (const id of aProgs) {
+    if (!bProgs.has(id)) changes.push({ label: 'Program removed', from: id, to: '—', type: 'removed' });
+  }
+
+  // Timeline compression
+  const aComp = a.scenario.timing.compressionMonths.value;
+  const bComp = b.scenario.timing.compressionMonths.value;
+  if (aComp !== bComp) {
+    changes.push({ label: 'Timeline compression', from: aComp !== null ? `${aComp} months` : 'Not set', to: bComp !== null ? `${bComp} months` : 'Not set', type: 'changed' });
+  }
+
+  // Business outcome assumptions
+  const outp = [
+    { field: 'patientVolumeUpliftPct' as const, label: 'Patient Volume Uplift' },
+    { field: 'costPerTreatmentImprovementPct' as const, label: 'Cost per Treatment Improvement' },
+    { field: 'supplyWasteReductionPct' as const, label: 'Supply Waste Reduction' },
+    { field: 'overallValueCapturePct' as const, label: 'Overall Value Capture' },
+  ];
+  for (const { field, label } of outp) {
+    const av = a.scenario.businessOutcomes[field].value;
+    const bv = b.scenario.businessOutcomes[field].value;
+    if (av !== bv) {
+      changes.push({ label, from: av !== null ? `${av}` : 'Not set', to: bv !== null ? `${bv}` : 'Not set', type: 'changed' });
+    }
+  }
+
+  // Modeled value difference
+  const aVal = a.engine.totalAnnualBusinessValue.value;
+  const bVal = b.engine.totalAnnualBusinessValue.value;
+  if (aVal !== null && bVal !== null && Math.abs(aVal - bVal) > 0.05) {
+    const diff = bVal - aVal;
+    changes.push({ label: 'Modeled annual value difference', from: `€${aVal.toFixed(1)}M/yr`, to: `€${bVal.toFixed(1)}M/yr (${diff > 0 ? '+' : ''}€${diff.toFixed(1)}M)`, type: 'changed' });
+  }
+
+  const colorA = pairs[0].color;
+  const colorB = pairs[1].color;
+
+  return (
+    <div style={{ background: 'white', marginBottom: 32, padding: '20px 24px' }}>
+      {changes.length === 0 ? (
+        <div style={{ fontSize: 12, color: 'var(--grey-2)', fontStyle: 'italic' }}>
+          No differences detected between these two scenarios.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {changes.map((c, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '200px 1fr auto 1fr', gap: 12, alignItems: 'center', padding: '8px 0', borderBottom: i < changes.length - 1 ? '1px solid var(--grey-0)' : 'none' }}>
+              <div style={{ fontSize: 11, color: 'var(--grey-3)', fontWeight: 600 }}>{c.label}</div>
+              <div style={{ fontSize: 12, color: colorA, background: `${colorA}14`, padding: '3px 10px', borderRadius: 4 }}>
+                {c.from}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--grey-2)' }}>→</div>
+              <div style={{ fontSize: 12, color: colorB, background: `${colorB}14`, padding: '3px 10px', borderRadius: 4 }}>
+                {c.to}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: 16, fontSize: 11, color: 'var(--grey-2)', fontStyle: 'italic' }}>
+        Showing differences between <strong style={{ color: colorA }}>{a.scenario.metadata.name}</strong> and <strong style={{ color: colorB }}>{b.scenario.metadata.name}</strong>.
+        {pairs.length > 2 && ' Expand to see all three pairwise comparisons.'}
+      </div>
     </div>
   );
 }

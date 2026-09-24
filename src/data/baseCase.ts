@@ -9,36 +9,27 @@ import {
 export const ACCENTURE_BASE_CASE: Scenario = {
   metadata: {
     id: BASE_CASE_ID,
-    name: 'Accenture Base Case – Estimates',
+    name: 'Illustrative Starting Point',
     description:
-      'Accenture starting hypothesis based on FME source materials. All four programs under integrated design. Assumptions are editable starting points — clone this scenario to build your own.',
+      'Starting hypothesis based on comparable healthcare transformations. All four programs under integrated design. Values are illustrative — requires FME validation.',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     status: 'draft',
   },
   isBaseCaseLocked: true,
 
-  // Full integration hypothesis: all four programs
   selectedPrograms: ['esphora-cd', 'ehr-patient-care', 'supply-chain', 'gemini'],
 
   businessOutcomes: {
-    // Core transformation levers — Accenture Estimates based on comparable healthcare transformations
     patientVolumeUpliftPct: accentureEstimate(3),
     costPerTreatmentImprovementPct: accentureEstimate(8),
     clinicProductivityImprovementPct: accentureEstimate(10),
     supplyWasteReductionPct: accentureEstimate(15),
     overallValueCapturePct: accentureEstimate(65),
-
-    // Program-specific KPIs — FME operational baseline where known, otherwise empty
-    // EHR / Patient Care
-    noShowRateReductionPct: emptyInput(), // FME to confirm current rate
+    noShowRateReductionPct: emptyInput(),
     cancellationRateReductionPct: emptyInput(),
-
-    // Supply Chain
     inventoryTurnsImprovementPct: emptyInput(),
     stockoutReductionPct: emptyInput(),
-
-    // GEMINI / Enterprise reporting
     financeProductivityImprovementPct: accentureEstimate(12),
     dsoReductionPct: emptyInput(),
   },
@@ -47,7 +38,7 @@ export const ACCENTURE_BASE_CASE: Scenario = {
     governance: {
       id: 'governance',
       label: 'Governance / Management',
-      costBaseEurM: emptyInput(), // FME must enter
+      costBaseEurM: emptyInput(),
       sharedPct: accentureEstimate(40),
     },
     changeManagement: {
@@ -88,16 +79,11 @@ export const ACCENTURE_BASE_CASE: Scenario = {
     },
   },
 
-  // Financial baselines — FME must confirm from their own reporting
   financialBaselines: {
     revenueBaselineEurM: emptyInput(),
     annualTreatmentVolume: emptyInput(),
-    // Cost per treatment is a known FME operational metric — labeled as FME Reported
-    // Value below is an indicative baseline; Martin should confirm against current FY data
     costPerTreatmentEur: fmeReported(8500),
-    // No-show rate from FME operational materials — confirm and adjust as needed
     currentNoShowRatePct: fmeReported(8),
-    // Supply / consumable cost base and treatment value — FME must provide from financials
     supplyConsumableCostBaseEurM: emptyInput(),
     valuePerIncrementalTreatmentEur: emptyInput(),
   },

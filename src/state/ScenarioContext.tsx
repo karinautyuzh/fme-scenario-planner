@@ -2,7 +2,9 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import {
   AppState,
   Scenario,
-  ProgramId,
+  ProgramLibraryEntry,
+  ProgramKPI,
+  OutcomeId,
   ValueRealizationSpeed,
   BASE_CASE_ID,
   adjustAssumption,
@@ -10,6 +12,7 @@ import {
   accentureEstimate,
 } from '../types';
 import { ACCENTURE_BASE_CASE } from '../data/baseCase';
+import { INITIAL_PROGRAM_LIBRARY } from '../data/programLibrary';
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
@@ -19,7 +22,7 @@ type Action =
   | { type: 'DUPLICATE_SCENARIO'; id: string }
   | { type: 'RENAME_SCENARIO'; id: string; name: string }
   | { type: 'DELETE_SCENARIO'; id: string }
-  | { type: 'TOGGLE_PROGRAM'; programId: ProgramId }
+  | { type: 'TOGGLE_PROGRAM'; programId: string }
   | { type: 'SET_BUSINESS_OUTCOME'; field: string; value: number | null }
   | { type: 'SET_SHARED_COST_BASE'; categoryId: string; value: number | null }
   | { type: 'SET_SHARED_COST_PCT'; categoryId: string; value: number }
@@ -27,12 +30,25 @@ type Action =
   | { type: 'SET_VALUE_REALIZATION_SPEED'; value: ValueRealizationSpeed }
   | { type: 'SET_RAMP_MONTHS'; value: number }
   | { type: 'SET_FINANCIAL'; field: string; value: number | null }
-  | { type: 'SET_PROGRAM_INVESTMENT'; programId: ProgramId; value: number | null };
+  | { type: 'SET_PROGRAM_INVESTMENT'; programId: string; value: number | null }
+  // Program Library
+  | { type: 'ADD_PROGRAM'; program: ProgramLibraryEntry }
+  | { type: 'UPDATE_PROGRAM'; id: string; updates: Partial<ProgramLibraryEntry> }
+  | { type: 'DELETE_PROGRAM'; id: string }
+  | { type: 'TOGGLE_PROGRAM_KPI'; programId: string; kpiId: string }
+  | { type: 'ADD_CUSTOM_KPI'; programId: string; kpi: ProgramKPI }
+  | { type: 'UPDATE_PROGRAM_KPI'; programId: string; kpiId: string; updates: Partial<ProgramKPI> }
+  | { type: 'SET_PROGRAM_OUTCOME_PRIORITY'; programId: string; outcomeId: OutcomeId; value: number }
+  | { type: 'SET_PROGRAM_FIELD'; programId: string; field: string; value: unknown };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function uid(): string {
-  return `scenario-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  return `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function pidUid(): string {
+  return `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 function cloneScenario(source: Scenario, name: string): Scenario {
@@ -56,11 +72,11 @@ function getActiveScenario(state: AppState): Scenario {
 function updateActive(state: AppState, mutate: (s: Scenario) => Scenario): AppState {
   const active = getActiveScenario(state);
 
-  // Base case protection: clone before any mutation
   if (active.isBaseCaseLocked) {
     const cloneName = generateCloneName(state.scenarios);
     const clone = mutate(cloneScenario(active, cloneName));
     return {
+      ...state,
       scenarios: [...state.scenarios, clone],
       activeScenarioId: clone.metadata.id,
     };
@@ -73,6 +89,17 @@ function updateActive(state: AppState, mutate: (s: Scenario) => Scenario): AppSt
         ? { ...mutate(s), metadata: { ...s.metadata, updatedAt: new Date().toISOString() } }
         : s
     ),
+  };
+}
+
+function updateLibraryEntry(
+  state: AppState,
+  id: string,
+  mutate: (p: ProgramLibraryEntry) => ProgramLibraryEntry
+): AppState {
+  return {
+    ...state,
+    programLibrary: state.programLibrary.map((p) => (p.id === id ? mutate(p) : p)),
   };
 }
 
@@ -107,6 +134,7 @@ function reducer(state: AppState, action: Action): AppState {
       const name = generateNewName(state.scenarios);
       const newScenario = cloneScenario(base, name);
       return {
+        ...state,
         scenarios: [...state.scenarios, newScenario],
         activeScenarioId: newScenario.metadata.id,
       };
@@ -118,6 +146,7 @@ function reducer(state: AppState, action: Action): AppState {
       const name = generateNewName(state.scenarios);
       const dup = cloneScenario(source, name);
       return {
+        ...state,
         scenarios: [...state.scenarios, dup],
         activeScenarioId: dup.metadata.id,
       };
@@ -137,11 +166,11 @@ function reducer(state: AppState, action: Action): AppState {
       const remaining = state.scenarios.filter(
         (s) => s.metadata.id !== action.id || s.isBaseCaseLocked
       );
-      if (remaining.length === state.scenarios.length) return state; // nothing deleted
+      if (remaining.length === state.scenarios.length) return state;
       const newActive =
         remaining.find((s) => s.metadata.id === state.activeScenarioId)?.metadata.id ??
         remaining[remaining.length - 1].metadata.id;
-      return { scenarios: remaining, activeScenarioId: newActive };
+      return { ...state, scenarios: remaining, activeScenarioId: newActive };
     }
 
     case 'TOGGLE_PROGRAM':
@@ -250,6 +279,60 @@ function reducer(state: AppState, action: Action): AppState {
         },
       }));
 
+    // ── Program Library actions ────────────────────────────────────────────────
+
+    case 'ADD_PROGRAM':
+      return {
+        ...state,
+        programLibrary: [...state.programLibrary, action.program],
+      };
+
+    case 'UPDATE_PROGRAM':
+      return updateLibraryEntry(state, action.id, (p) => ({ ...p, ...action.updates }));
+
+    case 'DELETE_PROGRAM': {
+      const entry = state.programLibrary.find((p) => p.id === action.id);
+      if (!entry || entry.isBuiltIn) return state;
+      return {
+        ...state,
+        programLibrary: state.programLibrary.filter((p) => p.id !== action.id),
+        scenarios: state.scenarios.map((s) => ({
+          ...s,
+          selectedPrograms: s.selectedPrograms.filter((pid) => pid !== action.id),
+        })),
+      };
+    }
+
+    case 'TOGGLE_PROGRAM_KPI':
+      return updateLibraryEntry(state, action.programId, (p) => ({
+        ...p,
+        kpis: p.kpis.map((k) => (k.id === action.kpiId ? { ...k, isActive: !k.isActive } : k)),
+      }));
+
+    case 'ADD_CUSTOM_KPI':
+      return updateLibraryEntry(state, action.programId, (p) => ({
+        ...p,
+        kpis: [...p.kpis, action.kpi],
+      }));
+
+    case 'UPDATE_PROGRAM_KPI':
+      return updateLibraryEntry(state, action.programId, (p) => ({
+        ...p,
+        kpis: p.kpis.map((k) => (k.id === action.kpiId ? { ...k, ...action.updates } : k)),
+      }));
+
+    case 'SET_PROGRAM_OUTCOME_PRIORITY':
+      return updateLibraryEntry(state, action.programId, (p) => ({
+        ...p,
+        outcomePriorities: { ...p.outcomePriorities, [action.outcomeId]: action.value },
+      }));
+
+    case 'SET_PROGRAM_FIELD':
+      return updateLibraryEntry(state, action.programId, (p) => ({
+        ...p,
+        [action.field]: action.value,
+      }));
+
     default:
       return state;
   }
@@ -265,6 +348,7 @@ function buildInitialState(): AppState {
   return {
     scenarios: [baseCaseCopy],
     activeScenarioId: BASE_CASE_ID,
+    programLibrary: JSON.parse(JSON.stringify(INITIAL_PROGRAM_LIBRARY)),
   };
 }
 
@@ -273,14 +357,16 @@ function loadFromStorage(): AppState | null {
     const raw = localStorage.getItem('fme-app-state');
     if (!raw) return null;
     const parsed: AppState = JSON.parse(raw);
-    // Validate new state shape: must have scenarios array and a valid activeScenarioId
     if (!Array.isArray(parsed.scenarios) || !parsed.scenarios.length) return null;
     if (!parsed.activeScenarioId) return null;
     const activeExists = parsed.scenarios.some((s) => s.metadata?.id === parsed.activeScenarioId);
     if (!activeExists) return null;
-    // Validate each scenario has the required new fields
     for (const s of parsed.scenarios) {
       if (!s.businessOutcomes || !s.sharedCosts || !s.timing || !s.financialBaselines) return null;
+    }
+    // Migrate: add programLibrary if missing
+    if (!Array.isArray(parsed.programLibrary) || !parsed.programLibrary.length) {
+      parsed.programLibrary = JSON.parse(JSON.stringify(INITIAL_PROGRAM_LIBRARY));
     }
     return parsed;
   } catch {
@@ -320,5 +406,4 @@ export function useScenario(): ScenarioContextValue {
   return ctx;
 }
 
-// Re-export for convenience
-export { accentureEstimate };
+export { accentureEstimate, pidUid };
