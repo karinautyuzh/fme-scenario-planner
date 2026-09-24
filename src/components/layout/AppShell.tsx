@@ -6,7 +6,11 @@ import { ScenarioSummaryPanel } from './ScenarioSummaryPanel';
 import { ThoughtPartnerButton, ThoughtPartnerPanel } from './ThoughtPartnerPanel';
 import ScenarioStrip from '../scenario/ScenarioStrip';
 
-export function AppShell() {
+interface AppShellProps {
+  onLogout: () => void;
+}
+
+export function AppShell({ onLogout }: AppShellProps) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [thoughtPartnerOpen, setThoughtPartnerOpen] = useState(false);
 
@@ -15,6 +19,7 @@ export function AppShell() {
       <TopBar
         onOpenSummary={() => setSummaryOpen(true)}
         onOpenThoughtPartner={() => setThoughtPartnerOpen(true)}
+        onLogout={onLogout}
       />
       <NavTabs />
       <ScenarioStrip />

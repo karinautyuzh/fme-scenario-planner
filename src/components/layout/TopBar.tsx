@@ -3,9 +3,10 @@ import { useScenario } from '../../state/ScenarioContext';
 interface TopBarProps {
   onOpenSummary: () => void;
   onOpenThoughtPartner?: () => void;
+  onLogout?: () => void;
 }
 
-export function TopBar({ onOpenSummary, onOpenThoughtPartner }: TopBarProps) {
+export function TopBar({ onOpenSummary, onOpenThoughtPartner, onLogout }: TopBarProps) {
   const { activeScenario } = useScenario();
 
   return (
@@ -158,6 +159,31 @@ export function TopBar({ onOpenSummary, onOpenThoughtPartner }: TopBarProps) {
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>CFO, FME</span>
           </div>
         </div>
+
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            title="End session"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'rgba(255,255,255,0.35)',
+              fontSize: 11,
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              padding: '4px 2px',
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.7)')
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.35)')
+            }
+          >
+            Logout
+          </button>
+        )}
       </div>
     </header>
   );
