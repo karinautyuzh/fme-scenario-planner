@@ -46,7 +46,7 @@ export default function LivePreview() {
           {selectedProgramNames.length === 0 ? (
             <MissingNote>No programs selected</MissingNote>
           ) : selectedProgramNames.length === PROGRAMS.length ? (
-            <PreviewValue>All 4 programs — full integration</PreviewValue>
+            <PreviewValue>Multiple programs — full integration</PreviewValue>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {selectedProgramNames.map((p) => (

@@ -287,7 +287,7 @@ function respondToAddProgram(ctx: ThoughtPartnerContext): ThoughtPartnerResponse
 
   if (notSelected.length === 0) {
     return {
-      content: `All four programs are already included in "${ctx.scenarioName}" — this is the full integrated transformation scenario.\n\nWith all programs active, the integration benefits are maximized:\n• Shared data layer eliminates duplicate architecture across all streams\n• Single change management program across the transformation\n• GEMINI becomes the intelligence layer from day one, eliminating program-level shadow reporting\n• Value acceleration is at its highest because all programs benefit from integrated design`,
+      content: `All programs are already included in "${ctx.scenarioName}" — this is the full integrated scenario.\n\nWith all programs active, the integration benefits are maximized:\n• Shared data layer eliminates duplicate architecture across all streams\n• Single change management program across the transformation\n• Value acceleration is at its highest because all programs benefit from integrated design`,
       intent: 'ADD_PROGRAM',
       suggestedFollowUps: [
         'How does running programs together accelerate value versus separately?',

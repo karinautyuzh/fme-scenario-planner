@@ -79,9 +79,9 @@ export function ThoughtPartnerPanel({ open, onClose }: ThoughtPartnerPanelProps)
   const engine = useEngineOutput(activeScenario);
 
   const context = useMemo(
-    () => buildThoughtPartnerContext(activeScenario, engine, state.scenarios),
+    () => buildThoughtPartnerContext(activeScenario, engine, state.scenarios, state.programLibrary),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeScenario.metadata.id, activeScenario.metadata.updatedAt, engine, state.scenarios.length]
+    [activeScenario.metadata.id, activeScenario.metadata.updatedAt, engine, state.scenarios.length, state.programLibrary]
   );
 
   const [messages, setMessages] = useState<ThoughtPartnerMessage[]>([]);
@@ -104,9 +104,7 @@ export function ThoughtPartnerPanel({ open, onClose }: ThoughtPartnerPanelProps)
       const programText =
         context.selectedProgramCount === 0
           ? `No programs are selected yet.`
-          : context.selectedProgramCount === 4
-            ? `All 4 programs are in scope — the full integrated transformation.`
-            : `${context.selectedProgramCount} program${context.selectedProgramCount > 1 ? 's' : ''} in scope: ${context.selectedPrograms.join(', ')}.`;
+          : `${context.selectedProgramCount} program${context.selectedProgramCount > 1 ? 's' : ''} in scope: ${context.selectedPrograms.join(', ')}.`;
 
       const opening: ThoughtPartnerMessage = {
         id: uid(),
@@ -424,9 +422,7 @@ function ScenarioContextStrip({
   const programLabel =
     context.selectedProgramCount === 0
       ? 'No programs'
-      : context.selectedProgramCount === 4
-        ? 'All 4 programs'
-        : `${context.selectedProgramCount} program${context.selectedProgramCount > 1 ? 's' : ''}`;
+      : `${context.selectedProgramCount} program${context.selectedProgramCount > 1 ? 's' : ''}`;
 
   return (
     <div

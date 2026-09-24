@@ -53,7 +53,7 @@ export function ExecutiveOverview() {
           <strong style={{ fontWeight: 600 }}>Modeled as one.</strong>
         </h1>
         <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', lineHeight: 1.75, maxWidth: 560, marginBottom: 32 }}>
-          {library.length > 0 ? library.length : 'Multiple'} programs. Three enterprise outcomes. One design question: what changes when you build them together rather than in parallel?
+          Multiple programs. Three enterprise outcomes. One design question: what changes when you build them together rather than in parallel?
         </p>
 
         {/* Value hypothesis callout */}
@@ -239,45 +239,32 @@ export function ExecutiveOverview() {
         </div>
       </div>
 
-      {/* ── Execution Layer intro ── */}
-      <SectionLabel>The Execution Layer</SectionLabel>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-        <div style={{ background: 'white', borderTop: '3px solid var(--teal)', padding: '22px 26px' }}>
-          <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 16, fontWeight: 600, color: 'var(--navy)', marginBottom: 10 }}>
-            Business Execution Office
-          </div>
-          <p style={{ fontSize: 12.5, color: 'var(--grey-3)', lineHeight: 1.65 }}>
-            The execution model that makes integrated delivery possible. Not a PMO — the connective
-            structure that manages one enterprise business case, one sequencing engine, one change
-            agenda, and one value-realization cadence across all programs.
-          </p>
-          <button
-            onClick={() => navigate('/realize')}
-            style={{ marginTop: 14, background: 'none', border: '1px solid var(--teal)', color: 'var(--teal)', fontSize: 11, fontWeight: 600, padding: '7px 14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', borderRadius: 3 }}
-          >
-            See the Value Realization Scorecard →
-          </button>
+      {/* ── Integrated Design and an Integrated Experience ── */}
+      <SectionLabel>Integrated Design and an Integrated Experience</SectionLabel>
+      <div style={{ background: 'var(--navy)', padding: '32px 40px' }}>
+        <p style={{ fontFamily: 'Source Serif 4, serif', fontSize: 16, fontWeight: 300, color: 'rgba(255,255,255,0.85)', lineHeight: 1.65, maxWidth: 640, marginBottom: 28 }}>
+          Multiple transformation programs sharing outcomes and dependencies creates a choice: manage them in parallel — or design them as one. Integrated design produces an integrated experience. And an integrated experience delivers value sooner.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2, marginBottom: 24 }}>
+          {[
+            { label: 'Multiple Programs', sub: 'Shared outcomes, shared dependencies, overlapping change populations' },
+            { label: 'Integrated Design', sub: 'One architecture, one change agenda, one enterprise business case' },
+            { label: 'Integrated Experience', sub: "One transformation that FME's people and clinicians navigate once" },
+            { label: 'Value Realized Sooner', sub: 'Compression, shared cost, and outcome uplift captured together' },
+          ].map(({ label, sub }, i) => (
+            <div key={i} style={{ background: 'rgba(255,255,255,0.06)', borderTop: '2px solid var(--teal)', padding: '18px 16px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'white', marginBottom: 6 }}>{label}</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', lineHeight: 1.55 }}>{sub}</div>
+              {i < 3 && <div style={{ fontSize: 16, color: 'var(--teal)', marginTop: 10 }}>→</div>}
+            </div>
+          ))}
         </div>
-
-        <div style={{ background: 'var(--navy)', padding: '22px 26px' }}>
-          <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 15, fontWeight: 600, color: 'white', marginBottom: 18 }}>
-            THIS TOOL ALLOWS YOU TO AUTHOR THE VALUE JOURNEY.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[
-              { step: '02', label: 'Define your programs in Program Intake' },
-              { step: '03', label: 'Choose which programs to integrate in your scenario' },
-              { step: '04', label: 'Pressure-test your assumptions at the program level' },
-              { step: '05', label: 'Compare scenarios and understand what changed' },
-              { step: '06', label: 'Score your readiness and map the execution model' },
-            ].map(({ step, label }) => (
-              <div key={step} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--teal)', width: 20, flexShrink: 0 }}>{step}</span>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.4 }}>{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <button
+          onClick={() => navigate('/realize')}
+          style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.25)', color: 'white', fontSize: 11, fontWeight: 600, padding: '8px 16px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', borderRadius: 3 }}
+        >
+          See Value Realization Scorecard →
+        </button>
       </div>
 
     </div>

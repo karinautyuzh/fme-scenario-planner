@@ -1,21 +1,23 @@
-import { Scenario } from '../../types';
+import { Scenario, ProgramLibraryEntry } from '../../types';
 import { ScenarioEngineOutput } from '../../engine/types';
-import { PROGRAMS } from '../../data/programs';
 import { ThoughtPartnerContext, SuggestedPrompt, ThoughtPartnerIntent } from './types';
 
 export function buildThoughtPartnerContext(
   scenario: Scenario,
   engine: ScenarioEngineOutput,
-  allScenarios: Scenario[]
+  allScenarios: Scenario[],
+  programLibrary: ProgramLibraryEntry[] = []
 ): ThoughtPartnerContext {
   const selectedProgramNames = scenario.selectedPrograms.map(
-    (id) => PROGRAMS.find((p) => p.id === id)?.shortName ?? id
+    (id) => programLibrary.find((p) => p.id === id)?.shortName ?? id
   );
 
   const accel2030 =
     engine.valueAccelerated2030.status === 'CALCULATED' && engine.valueAccelerated2030.value !== null
       ? engine.valueAccelerated2030.value
       : null;
+
+  const totalSharedCostBenefitEurM = engine.totalSharedCostBenefit.value;
 
   return {
     scenarioName: scenario.metadata.name,
@@ -38,6 +40,7 @@ export function buildThoughtPartnerContext(
     costPerTreatmentImprovementPct: scenario.businessOutcomes.costPerTreatmentImprovementPct.value,
     supplyWasteReductionPct: scenario.businessOutcomes.supplyWasteReductionPct.value,
     overallValueCapturePct: scenario.businessOutcomes.overallValueCapturePct.value,
+    totalSharedCostBenefitEurM,
   };
 }
 
@@ -59,9 +62,24 @@ const PROMPT_SPECS: PromptSpec[] = [
     show: (ctx) => ctx.selectedProgramCount > 0,
   },
   {
+    text: 'What is driving the synergy uplift in this scenario?',
+    intent: 'VALUE_DRIVERS',
+    show: (ctx) => ctx.selectedProgramCount >= 2,
+  },
+  {
+    text: 'Which dimension is limiting the integration score?',
+    intent: 'VALUE_DRIVERS',
+    show: (ctx) => ctx.selectedProgramCount >= 2,
+  },
+  {
     text: 'How does running programs together accelerate value versus separately?',
     intent: 'TIMELINE',
     show: (ctx) => ctx.compressionMonths !== null && ctx.compressionMonths > 0,
+  },
+  {
+    text: 'What would change if I removed one of these programs?',
+    intent: 'SENSITIVITY',
+    show: (ctx) => ctx.selectedProgramCount > 1,
   },
   {
     text: 'Walk me through how the annual value is calculated.',
@@ -71,25 +89,18 @@ const PROMPT_SPECS: PromptSpec[] = [
   {
     text: 'What industry benchmarks exist for EHR-led patient volume uplift?',
     intent: 'INDUSTRY_INSIGHT',
-    show: (ctx) => ctx.selectedProgramIds.includes('ehr-patient-care'),
+    show: (ctx) => ctx.patientVolumeUpliftPct !== null,
   },
   {
     text: 'What industry benchmarks exist for supply chain waste reduction?',
     intent: 'INDUSTRY_INSIGHT',
     show: (ctx) =>
-      ctx.selectedProgramIds.includes('supply-chain') &&
-      !ctx.selectedProgramIds.includes('ehr-patient-care'),
+      ctx.supplyWasteReductionPct !== null && ctx.patientVolumeUpliftPct === null,
   },
   {
     text: 'How does this scenario compare to the others I have built?',
     intent: 'SCENARIO_DIFF',
     show: (ctx) => ctx.scenarioCount > 1 && !ctx.isBaseCaseLocked,
-  },
-  {
-    text: 'What would it take to add GEMINI to this scenario?',
-    intent: 'ADD_PROGRAM',
-    show: (ctx) =>
-      !ctx.selectedProgramIds.includes('gemini') && ctx.selectedProgramCount > 0,
   },
   {
     text: 'How sensitive is total value to the value capture rate?',
@@ -100,6 +111,11 @@ const PROMPT_SPECS: PromptSpec[] = [
     text: 'What would change if I compressed delivery by 6 months?',
     intent: 'SENSITIVITY',
     show: (ctx) => ctx.totalAnnualValueEurM !== null && (ctx.compressionMonths ?? 0) < 6,
+  },
+  {
+    text: 'What would improve Speed to Value in this scenario?',
+    intent: 'VALUE_DRIVERS',
+    show: (ctx) => ctx.selectedProgramCount >= 1 && (ctx.compressionMonths ?? 0) < 12,
   },
 ];
 

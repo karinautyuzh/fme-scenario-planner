@@ -30,6 +30,7 @@ export interface ThoughtPartnerContext {
   costPerTreatmentImprovementPct: number | null;
   supplyWasteReductionPct: number | null;
   overallValueCapturePct: number | null;
+  totalSharedCostBenefitEurM?: number | null;
 }
 
 export interface IndustryInsight {

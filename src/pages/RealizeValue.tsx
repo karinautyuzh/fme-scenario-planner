@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useScenario } from '../state/ScenarioContext';
 import { useEngineOutput } from '../engine/useEngine';
 import { Scenario, ProgramLibraryEntry } from '../types';
 import { ScenarioEngineOutput } from '../engine/types';
+import { OUTCOMES } from '../data/outcomes';
 import ValueCurveChart from '../components/value/ValueCurveChart';
 
 // ─── Scorecard Dimensions ─────────────────────────────────────────────────────
@@ -51,13 +52,12 @@ function computeScorecard(
       ? priorityValues.reduce((a, b) => a + b, 0) / priorityValues.length
       : 50;
 
-    // Coverage bonus: more outcomes covered → higher score
     const outcomesSet = new Set<string>();
     selectedLib.forEach((p) => (p.outcomes as string[]).forEach((o) => outcomesSet.add(o)));
     const coveragePct = outcomesSet.size / 3;
 
     businessOutcomeScore = Math.round((avgPriority * 0.6 + coveragePct * 100 * 0.4));
-    businessOutcomeWhy = `Your ${sp.length} program${sp.length !== 1 ? 's' : ''} cover${sp.length === 1 ? 's' : ''} ${outcomesSet.size}/3 enterprise outcomes. Average outcome priority across active programs is ${Math.round(avgPriority)}/100.`;
+    businessOutcomeWhy = `${sp.length} program${sp.length !== 1 ? 's' : ''} cover${sp.length === 1 ? 's' : ''} ${outcomesSet.size}/3 enterprise outcomes. Average outcome priority across active programs is ${Math.round(avgPriority)}/100.`;
     if (outcomesSet.size < 3) boWhatMustBeTrue.push('Ensure all three enterprise outcomes are covered by at least one program.');
     if (avgPriority < 60) boWhatMustBeTrue.push('Review and raise outcome priorities for programs where strategic alignment is higher than currently indicated.');
   }
@@ -234,63 +234,83 @@ function computeWeightedScore(dims: ScorecardDimension[]): { score: number; isPa
   };
 }
 
-// ─── BEO Capabilities ─────────────────────────────────────────────────────────
+// ─── Synergy Uplift ───────────────────────────────────────────────────────────
 
-interface BeoCapability {
-  id: string;
-  title: string;
-  description: string;
-  critical: boolean;
-  criticalReason: string | null;
+interface SynergyResult {
+  pct: number | null;
+  type: 'financial' | 'modeled' | 'insufficient';
+  label: string;
+  explanation: string;
 }
 
-function buildBeoCapabilities(scenario: Scenario, engine: ScenarioEngineOutput): BeoCapability[] {
+const SEPARATE_BASELINES: Record<string, number> = {
+  'data-integration': 10,
+  'change-workforce': 10,
+  'sequencing': 5,
+  'shared-cost': 0,
+  'speed-to-value': 20,
+};
+
+function computeSynergyUplift(
+  scenario: Scenario,
+  engine: ScenarioEngineOutput,
+  dims: ScorecardDimension[]
+): SynergyResult {
   const sp = scenario.selectedPrograms;
-  const compression = scenario.timing.compressionMonths.value ?? 0;
-  const changeSharedPct = scenario.sharedCosts.changeManagement.sharedPct.value ?? 0;
-  const dataSharedPct = scenario.sharedCosts.dataIntegration.sharedPct.value ?? 0;
-  const volumeUplift = scenario.businessOutcomes.patientVolumeUpliftPct.value ?? 0;
 
-  return [
-    {
-      id: 'enterprise-case',
-      title: 'One Enterprise Business Case',
-      description: "Value managed across all selected programs against enterprise outcomes rather than isolated per-program business cases. Each program's contribution is tracked to the same set of enterprise KPIs.",
-      critical: true,
-      criticalReason: `Your scenario targets enterprise-level outcomes across ${sp.length} program${sp.length !== 1 ? 's' : ''} — a single enterprise business case prevents each program team from optimizing locally at the expense of the combined result.`,
-    },
-    {
-      id: 'sequencing',
-      title: 'One Sequencing Engine',
-      description: 'Dependencies, design decisions, and delivery timing managed across the integrated transformation. Enables cross-program trade-offs to be resolved without disrupting individual program delivery.',
-      critical: compression >= 6,
-      criticalReason: compression >= 6 ? `Your scenario assumes ${compression} months of delivery compression — this level of acceleration requires integrated sequencing to coordinate cross-program dependencies and avoid rework.` : null,
-    },
-    {
-      id: 'change',
-      title: 'One Change Agenda',
-      description: 'The same workforce experiences coordinated transformation rather than overlapping, program-by-program change waves. Avoids change fatigue and enables shared communication, training, and adoption resources.',
-      critical: changeSharedPct >= 35,
-      criticalReason: changeSharedPct >= 35 ? `Your scenario assumes ${changeSharedPct}% of change management cost is shared — this requires a coordinated change agenda that treats the workforce as one population across programs.` : null,
-    },
-    {
-      id: 'data',
-      title: 'One Data & Integration Architecture',
-      description: 'Shared data, integration, and technology decisions made once with visibility across all programs. Eliminates duplicate integration work and creates a reusable foundation for future digital capability.',
-      critical: dataSharedPct >= 30,
-      criticalReason: dataSharedPct >= 30 ? `Your scenario assumes ${dataSharedPct}% of data integration cost is shared — this only holds if integration architecture is designed once across programs.` : null,
-    },
-    {
-      id: 'value-cadence',
-      title: 'One Value-Realization Cadence',
-      description: "Business KPI uplift, shared-cost benefit, and value acceleration tracked against your scenario assumptions on a common cadence. Connects operational metrics to the financial model.",
-      critical: volumeUplift >= 3 || engine.totalAnnualBusinessValue.value !== null,
-      criticalReason: volumeUplift >= 3 ? `Your scenario assumes +${volumeUplift}% patient volume — the Value-Realization Cadence tracks whether workflow adoption is actually creating the expected patient-access improvement.` : engine.totalAnnualBusinessValue.value !== null ? 'With a modeled annual value in place, a structured realization cadence is needed to confirm assumptions are translating into actual outcomes.' : null,
-    },
-  ];
+  if (sp.length < 2) {
+    return {
+      pct: null,
+      type: 'insufficient',
+      label: 'Requires multiple programs',
+      explanation: 'Synergy uplift requires at least two programs under integrated design.',
+    };
+  }
+
+  const sharedCostVal = engine.totalSharedCostBenefit.value;
+  const annualVal = engine.totalAnnualBusinessValue.value;
+  const accelVal = engine.valueAccelerated2030.value;
+
+  if (sharedCostVal !== null && annualVal !== null && annualVal > 0) {
+    const annualizedAccel = accelVal !== null ? accelVal / 5 : 0;
+    const integrationValue = sharedCostVal + annualizedAccel;
+    const pct = Math.max(0, Math.round((integrationValue / annualVal) * 100));
+    const accelPart = annualizedAccel > 0
+      ? ` + €${annualizedAccel.toFixed(1)}M/yr accelerated value`
+      : '';
+    return {
+      pct,
+      type: 'financial',
+      label: 'Financial Synergy Uplift',
+      explanation: `€${sharedCostVal.toFixed(1)}M shared cost benefit${accelPart} relative to €${annualVal.toFixed(1)}M annual value baseline.`,
+    };
+  }
+
+  // Score-based fallback
+  const integrationDims = dims.filter((d) => d.id !== 'business-outcome');
+  let integrationGain = 0;
+  let maxPossibleGain = 0;
+
+  for (const dim of integrationDims) {
+    const baseline = SEPARATE_BASELINES[dim.id] ?? 0;
+    const score = dim.score ?? baseline;
+    integrationGain += Math.max(0, score - baseline) * dim.weight;
+    maxPossibleGain += (100 - baseline) * dim.weight;
+  }
+
+  const synergFraction = maxPossibleGain > 0 ? integrationGain / maxPossibleGain : 0;
+  const pct = Math.round(synergFraction * 20);
+
+  return {
+    pct,
+    type: 'modeled',
+    label: 'Modeled Synergy Score',
+    explanation:
+      'Derived from integration dimension scores. Enter shared cost data and financial baselines in Pressure-Test for a precise financial calculation.',
+  };
 }
 
-// ─── Score Color ──────────────────────────────────────────────────────────────
+// ─── Score Color Helpers ──────────────────────────────────────────────────────
 
 function scoreColor(score: number): string {
   if (score >= 75) return '#065F46';
@@ -313,11 +333,9 @@ export function RealizeValue() {
   const engine = useEngineOutput(activeScenario);
   const sp = activeScenario.selectedPrograms;
   const library = state.programLibrary;
+  const selectedLib = library.filter((p) => sp.includes(p.id));
 
-  const selectedProgramNames = useMemo(
-    () => library.filter((p) => sp.includes(p.id)).map((p) => p.shortName || p.name),
-    [sp, library]
-  );
+  const [expandedDim, setExpandedDim] = useState<string | null>(null);
 
   const scorecard = useMemo(
     () => computeScorecard(activeScenario, library, engine),
@@ -329,9 +347,9 @@ export function RealizeValue() {
     [scorecard]
   );
 
-  const beoCapabilities = useMemo(
-    () => buildBeoCapabilities(activeScenario, engine),
-    [activeScenario, engine]
+  const synergy = useMemo(
+    () => computeSynergyUplift(activeScenario, engine, scorecard),
+    [activeScenario, engine, scorecard]
   );
 
   const valueCurves = useMemo(
@@ -340,151 +358,284 @@ export function RealizeValue() {
   );
 
   const compressionMonths = activeScenario.timing.compressionMonths.value ?? 0;
+  const sharedCostVal = engine.totalSharedCostBenefit.value;
+  const annualVal = engine.totalAnnualBusinessValue.value;
+
+  // Top integration drivers: exclude business-outcome (not integration-specific), sort by score desc
+  const drivingDims = useMemo(() => {
+    return scorecard
+      .filter((d) => d.id !== 'business-outcome' && d.score !== null)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 4);
+  }, [scorecard]);
 
   return (
     <div style={{ padding: '40px 40px 80px', maxWidth: 1200, margin: '0 auto' }}>
 
       {/* ── Page Header ── */}
-      <div style={{ marginBottom: 36 }}>
+      <div style={{ marginBottom: 32 }}>
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 8 }}>
           06 — Value Realization
         </div>
         <h1 style={{ fontFamily: 'Source Serif 4, serif', fontSize: 30, fontWeight: 600, color: 'var(--navy)', marginBottom: 12, lineHeight: 1.15 }}>
           Value Realization Scorecard
         </h1>
-        <div style={{ background: 'var(--navy)', display: 'inline-flex', padding: '10px 18px', gap: 8, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+        <div style={{ display: 'inline-flex', background: 'var(--navy)', padding: '10px 18px', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>Active Scenario:</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: 'white' }}>{activeScenario.metadata.name}</span>
-          {selectedProgramNames.length > 0 && (
+          {selectedLib.length > 0 && (
             <>
               <span style={{ color: 'rgba(255,255,255,0.3)' }}>·</span>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Integrating: {selectedProgramNames.join(' + ')}</span>
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
+                {selectedLib.map((p) => p.shortName || p.name).join(' + ')}
+              </span>
             </>
           )}
         </div>
-        <p style={{ fontSize: 13, color: 'var(--grey-3)', lineHeight: 1.65, maxWidth: 640, marginTop: 12 }}>
-          How well does your scenario configuration position FME to capture the modeled value? Scores derive from your actual inputs — not estimates. Add more inputs to improve score accuracy.
-        </p>
       </div>
 
-      {/* ── Overall Score ── */}
-      <div style={{ background: 'var(--navy)', padding: '28px 36px', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
+      {/* ── Hero Synergy Uplift ── */}
+      <div
+        style={{
+          background: synergy.type === 'insufficient' ? 'var(--grey-0)' : 'var(--navy)',
+          padding: '36px 44px',
+          marginBottom: 4,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 32,
+          flexWrap: 'wrap',
+        }}
+      >
         <div>
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>
-            Overall Readiness Score {isPartial ? '· PARTIAL' : ''}
-          </div>
-          <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 52, fontWeight: 600, color: 'white', lineHeight: 1 }}>
-            {overallScore}
-            <span style={{ fontSize: 22, fontWeight: 300, color: 'rgba(255,255,255,0.55)', marginLeft: 4 }}>/100</span>
-          </div>
-          {isPartial && (
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 8, lineHeight: 1.5 }}>
-              Some dimensions need more inputs. Complete them in Pressure-Test for a full score.
-            </div>
+          {synergy.type === 'insufficient' ? (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 10 }}>
+                Synergy Uplift
+              </div>
+              <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 22, fontWeight: 300, color: 'var(--grey-3)', lineHeight: 1.3 }}>
+                Add more programs to model synergy.
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--grey-2)', marginTop: 8 }}>
+                Synergy uplift requires at least two programs under integrated design.
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 10 }}>
+                {synergy.label}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 64, fontWeight: 600, color: 'white', lineHeight: 1 }}>
+                  +{synergy.pct}%
+                </div>
+                {synergy.type === 'modeled' && (
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginBottom: 8, alignSelf: 'flex-end' }}>
+                    ILLUSTRATIVE — SCENARIO-DERIVED
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', marginTop: 10, lineHeight: 1.6, maxWidth: 480 }}>
+                {synergy.explanation}
+              </div>
+            </>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {scorecard.map((d) => (
-            <div key={d.id} style={{ textAlign: 'center', minWidth: 70 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: d.score !== null ? 'white' : 'rgba(255,255,255,0.3)' }}>
-                {d.score !== null ? d.score : '—'}
+
+        {/* Mini scorecard */}
+        {synergy.type !== 'insufficient' && (
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Integration Score', value: `${overallScore}/100` },
+              { label: 'Programs Modeled', value: `${sp.length}` },
+              ...(annualVal !== null ? [{ label: 'Annual Value', value: `€${annualVal.toFixed(1)}M` }] : []),
+              ...(sharedCostVal !== null ? [{ label: 'Shared Cost Benefit', value: `€${sharedCostVal.toFixed(1)}M` }] : []),
+              ...(compressionMonths > 0 ? [{ label: 'Timeline Compression', value: `${compressionMonths}mo` }] : []),
+            ].map(({ label, value }) => (
+              <div key={label} style={{ textAlign: 'center' }}>
+                <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 22, fontWeight: 600, color: 'white', lineHeight: 1 }}>{value}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>{label}</div>
               </div>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', lineHeight: 1.4 }}>
-                {d.title.split(' ').slice(0, 2).join('\n')}
-              </div>
-              <div style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', marginTop: 1 }}>{d.weight}%</div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Dimension Cards ── */}
-      <SectionLabel>Six Dimensions of Value Readiness</SectionLabel>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 40 }}>
-        {scorecard.map((dim) => (
-          <div
-            key={dim.id}
-            style={{
-              background: 'white',
-              borderLeft: `4px solid ${dim.score !== null ? scoreColor(dim.score) : 'var(--grey-1)'}`,
-              padding: '20px 24px',
-            }}
-          >
-            <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 20, alignItems: 'start' }}>
-              {/* Score */}
-              <div style={{ textAlign: 'center', padding: '10px 12px', background: dim.score !== null ? scoreBg(dim.score) : 'var(--grey-0)', borderRadius: 6 }}>
-                {dim.score !== null ? (
-                  <>
-                    <div style={{ fontSize: 28, fontWeight: 700, color: scoreColor(dim.score), lineHeight: 1 }}>{dim.score}</div>
-                    <div style={{ fontSize: 9, color: scoreColor(dim.score), opacity: 0.7, marginTop: 2 }}>/100</div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 14, color: 'var(--grey-2)' }}>—</div>
-                )}
-                <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--grey-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>
-                  Wt. {dim.weight}%
-                </div>
-              </div>
-
-              {/* Content */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)' }}>{dim.title}</div>
-                  {dim.status === 'needs_input' && (
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#FEF3C7', color: '#92400E', padding: '2px 7px', borderRadius: 2 }}>
-                      Needs Input
-                    </span>
-                  )}
-                  {dim.status === 'partial' && (
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#EBF4FF', color: 'var(--blue)', padding: '2px 7px', borderRadius: 2 }}>
-                      Partial
-                    </span>
+      {/* ── What Is Driving This Synergy ── */}
+      {drivingDims.length > 0 && (
+        <>
+          <SectionLabel>What Is Driving This Synergy</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 2, marginBottom: 40 }}>
+            {drivingDims.map((dim) => (
+              <div
+                key={dim.id}
+                style={{
+                  background: 'white',
+                  borderTop: `3px solid ${dim.score !== null ? scoreColor(dim.score) : 'var(--grey-1)'}`,
+                  padding: '18px 20px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy)' }}>{dim.title}</div>
+                  {dim.score !== null && (
+                    <div
+                      style={{
+                        padding: '4px 10px',
+                        background: scoreBg(dim.score),
+                        color: scoreColor(dim.score),
+                        fontSize: 14,
+                        fontWeight: 700,
+                        borderRadius: 4,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {dim.score}
+                    </div>
                   )}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--grey-3)', lineHeight: 1.6, marginBottom: 10 }}>
-                  <strong style={{ color: 'var(--grey-2)', fontWeight: 600 }}>Why this score:</strong> {dim.why}
+                <div style={{ fontSize: 11, color: 'var(--grey-3)', lineHeight: 1.6, marginBottom: dim.whatMustBeTrue.length > 0 ? 10 : 0 }}>
+                  {dim.why}
                 </div>
                 {dim.whatMustBeTrue.length > 0 && (
-                  <div style={{ padding: '10px 14px', background: '#F8FAFF', borderLeft: '2px solid var(--blue)', borderRadius: '0 4px 4px 0' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 6 }}>
+                  <div style={{ borderTop: '1px solid var(--grey-1)', paddingTop: 8 }}>
+                    <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 4 }}>
                       What Must Be True
                     </div>
-                    {dim.whatMustBeTrue.map((item, i) => (
-                      <div key={i} style={{ fontSize: 11, color: 'var(--navy)', lineHeight: 1.6, marginBottom: 3 }}>
+                    {dim.whatMustBeTrue.slice(0, 2).map((item, i) => (
+                      <div key={i} style={{ fontSize: 10, color: 'var(--navy)', lineHeight: 1.55, marginBottom: 2 }}>
                         · {item}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* Weight bar */}
-              <div style={{ width: 6, alignSelf: 'stretch', background: 'var(--grey-0)', borderRadius: 99, position: 'relative' }}>
-                {dim.score !== null && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      height: `${dim.score}%`,
-                      background: scoreColor(dim.score),
-                      borderRadius: 99,
-                      transition: 'height 0.5s ease',
-                    }}
-                  />
-                )}
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
+        </>
+      )}
+
+      {/* ── Value by Dimension ── */}
+      <SectionLabel>Value by Dimension</SectionLabel>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 40 }}>
+        {scorecard.map((dim) => {
+          const isExpanded = expandedDim === dim.id;
+          const contribution = dim.score !== null
+            ? Math.round(dim.score * dim.weight / 100)
+            : null;
+          return (
+            <div
+              key={dim.id}
+              style={{
+                background: 'white',
+                borderLeft: `4px solid ${dim.score !== null ? scoreColor(dim.score) : 'var(--grey-1)'}`,
+              }}
+            >
+              <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr auto', gap: 20, alignItems: 'start', padding: '20px 24px' }}>
+                {/* Score tile */}
+                <div style={{ textAlign: 'center', padding: '10px 12px', background: dim.score !== null ? scoreBg(dim.score) : 'var(--grey-0)', borderRadius: 6 }}>
+                  {dim.score !== null ? (
+                    <>
+                      <div style={{ fontSize: 28, fontWeight: 700, color: scoreColor(dim.score), lineHeight: 1 }}>{dim.score}</div>
+                      <div style={{ fontSize: 9, color: scoreColor(dim.score), opacity: 0.7, marginTop: 2 }}>/100</div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 14, color: 'var(--grey-2)' }}>—</div>
+                  )}
+                  <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--grey-2)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 4 }}>
+                    Wt. {dim.weight}%
+                  </div>
+                  {contribution !== null && (
+                    <div style={{ fontSize: 9, color: scoreColor(dim.score!), fontWeight: 700, marginTop: 2 }}>
+                      +{contribution} pts
+                    </div>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)' }}>{dim.title}</div>
+                    {dim.status === 'needs_input' && (
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#FEF3C7', color: '#92400E', padding: '2px 7px', borderRadius: 2 }}>
+                        Needs Input
+                      </span>
+                    )}
+                    {dim.status === 'partial' && (
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: '#EBF4FF', color: 'var(--blue)', padding: '2px 7px', borderRadius: 2 }}>
+                        Partial
+                      </span>
+                    )}
+                  </div>
+                  {dim.whatMustBeTrue.length > 0 && (
+                    <div style={{ padding: '8px 12px', background: '#F8FAFF', borderLeft: '2px solid var(--blue)', borderRadius: '0 4px 4px 0', marginBottom: 8 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 4 }}>
+                        What Must Be True
+                      </div>
+                      {dim.whatMustBeTrue.map((item, i) => (
+                        <div key={i} style={{ fontSize: 11, color: 'var(--navy)', lineHeight: 1.55, marginBottom: 2 }}>
+                          · {item}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setExpandedDim(isExpanded ? null : dim.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      color: 'var(--blue)',
+                      fontFamily: 'Inter, sans-serif',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <span style={{ fontSize: 14, lineHeight: 1 }}>{isExpanded ? '−' : '+'}</span>
+                    How was this calculated?
+                  </button>
+                </div>
+
+                {/* Weight bar */}
+                <div style={{ width: 6, alignSelf: 'stretch', background: 'var(--grey-0)', borderRadius: 99, position: 'relative' }}>
+                  {dim.score !== null && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: `${dim.score}%`,
+                        background: scoreColor(dim.score),
+                        borderRadius: 99,
+                        transition: 'height 0.5s ease',
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded calculation */}
+              {isExpanded && (
+                <div style={{ padding: '0 24px 20px 120px', borderTop: '1px solid var(--grey-0)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--grey-3)', lineHeight: 1.7, paddingTop: 14 }}>
+                    <strong style={{ color: 'var(--grey-2)', fontWeight: 600 }}>Why this score:</strong> {dim.why}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* ── Value Curve ── */}
       {engine.hasEnoughForCurve && (
         <>
           <SectionLabel>Value Realization Curve — Integrated vs. Separate Delivery</SectionLabel>
-          <div style={{ background: 'white', padding: '24px 28px', marginBottom: 32 }}>
+          <div style={{ background: 'white', padding: '24px 28px', marginBottom: 40 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--navy)', marginBottom: 4 }}>
@@ -508,68 +659,147 @@ export function RealizeValue() {
         </>
       )}
 
-      {/* ── Business Execution Office ── */}
-      <SectionLabel>The Business Execution Office</SectionLabel>
-      <div style={{ background: 'var(--navy)', padding: '28px 32px', marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 18, fontWeight: 600, color: 'white', marginBottom: 10 }}>
-          The execution mechanism behind your scenario
-        </div>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7, maxWidth: 680 }}>
-          The Business Execution Office is not a PMO, a reporting layer, or another governance overhead. It is the connective model that makes integrated delivery possible — and ensures that the economic advantage you have modeled actually flows to the enterprise.
-        </p>
-      </div>
+      {/* ── Program Breakdown ── */}
+      {selectedLib.length > 0 && (
+        <>
+          <SectionLabel>Program Breakdown</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 2, marginBottom: 40 }}>
+            {selectedLib.map((program) => {
+              const activeKpis = program.kpis.filter((k) => k.isActive).slice(0, 3);
+              const outcomeLabels = (program.outcomes as string[])
+                .map((oid) => OUTCOMES.find((o) => o.id === oid))
+                .filter(Boolean);
 
-      {/* BEO Capabilities */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 40 }}>
-        {beoCapabilities.map((cap) => (
-          <div
-            key={cap.id}
-            style={{
-              background: 'white',
-              borderLeft: `3px solid ${cap.critical ? 'var(--teal)' : 'var(--grey-1)'}`,
-              padding: '20px 24px',
-              display: 'grid',
-              gridTemplateColumns: cap.critical && cap.criticalReason ? '1fr auto' : '1fr',
-              gap: 20,
-              alignItems: 'start',
-            }}
-          >
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)' }}>{cap.title}</div>
-                {cap.critical && (
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', background: 'rgba(0,153,168,0.12)', color: 'var(--teal)', padding: '2px 7px', borderRadius: 2 }}>
-                    Critical for this scenario
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--grey-3)', lineHeight: 1.65, maxWidth: 520 }}>{cap.description}</div>
-            </div>
-            {cap.critical && cap.criticalReason && (
-              <div style={{ background: '#F0FDFA', border: '1px solid #99F6E4', borderLeft: '3px solid var(--teal)', padding: '12px 16px', fontSize: 12, color: 'var(--navy)', lineHeight: 1.6, maxWidth: 340, flexShrink: 0 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 5 }}>
-                  Why it matters here
+              // Programs this one connects to (via dependencies + shared flags)
+              const connections = selectedLib.filter((other) => {
+                if (other.id === program.id) return false;
+                return (
+                  program.dependencies.includes(other.id) ||
+                  other.dependencies.includes(program.id) ||
+                  ((program.sharedData || program.sharedTechnology) && (other.sharedData || other.sharedTechnology)) ||
+                  (program.sharedWorkforce && other.sharedWorkforce) ||
+                  (program.sharedChangePopulation && other.sharedChangePopulation)
+                );
+              });
+
+              return (
+                <div
+                  key={program.id}
+                  style={{
+                    background: 'white',
+                    borderTop: '3px solid var(--blue)',
+                    padding: '20px 22px',
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', marginBottom: 4 }}>
+                    {program.name}
+                  </div>
+                  {program.shortName && program.shortName !== program.name && (
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 8 }}>
+                      {program.shortName}
+                    </div>
+                  )}
+
+                  {/* Outcomes */}
+                  {outcomeLabels.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 4 }}>
+                        Enterprise Outcomes
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {outcomeLabels.map((o) => o && (
+                          <span
+                            key={o.id}
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: 'var(--teal)',
+                              background: '#E6F6F7',
+                              padding: '2px 7px',
+                              borderRadius: 3,
+                            }}
+                          >
+                            {o.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* KPIs */}
+                  {activeKpis.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 4 }}>
+                        Active KPIs
+                      </div>
+                      {activeKpis.map((kpi) => (
+                        <div key={kpi.id} style={{ fontSize: 11, color: 'var(--grey-3)', lineHeight: 1.5 }}>
+                          · {kpi.name}
+                          {kpi.target !== null && kpi.unit && (
+                            <span style={{ color: 'var(--blue)', fontWeight: 600 }}> → {kpi.target}{kpi.unit}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Illustrative value */}
+                  {program.illustrativeValueEurM.value !== null && (
+                    <div style={{ marginBottom: 12 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 2 }}>
+                        Illustrative Value
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)' }}>
+                        €{program.illustrativeValueEurM.value}M
+                        <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--grey-2)', marginLeft: 4 }}>ILLUSTRATIVE — REQUIRES FME VALIDATION</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Shared factors */}
+                  <div style={{ marginBottom: connections.length > 0 ? 12 : 0 }}>
+                    {(program.sharedData || program.sharedTechnology || program.sharedWorkforce || program.sharedChangePopulation) && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                        {program.sharedData && <Tag>Shared Data</Tag>}
+                        {program.sharedTechnology && <Tag>Shared Tech</Tag>}
+                        {program.sharedWorkforce && <Tag>Shared Workforce</Tag>}
+                        {program.sharedChangePopulation && <Tag>Shared Change Pop.</Tag>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Connections to other programs */}
+                  {connections.length > 0 && (
+                    <div style={{ borderTop: '1px solid var(--grey-1)', paddingTop: 10 }}>
+                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 4 }}>
+                        Key Synergy Connections
+                      </div>
+                      {connections.map((c) => (
+                        <div key={c.id} style={{ fontSize: 10, color: 'var(--navy)', lineHeight: 1.5 }}>
+                          ↔ {c.shortName || c.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {cap.criticalReason}
-              </div>
-            )}
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
-      {/* ── Closing Statement ── */}
-      <div style={{ background: 'var(--navy)', padding: '36px 48px', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Source Serif 4, serif', fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 300, color: 'white', lineHeight: 1.45, letterSpacing: '0.01em' }}>
-          One transformation.{' '}
-          <strong style={{ fontWeight: 600 }}>Multiple programs.</strong>
-          <br />
-          One accountable path to value.
+      {/* ── Empty state if no programs ── */}
+      {sp.length === 0 && (
+        <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--grey-3)', fontSize: 13, lineHeight: 1.7 }}>
+          No programs selected in this scenario. Go to Build Your Scenario to select programs and see the value scorecard.
         </div>
-      </div>
+      )}
 
     </div>
   );
 }
+
+// ─── Small Components ─────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -577,5 +807,23 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
       {children}
       <span style={{ flex: 1, height: 1, background: 'var(--grey-1)', display: 'block' }} />
     </div>
+  );
+}
+
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      style={{
+        fontSize: 9,
+        fontWeight: 700,
+        color: 'var(--grey-2)',
+        background: 'var(--grey-0)',
+        padding: '2px 6px',
+        borderRadius: 3,
+        letterSpacing: '0.04em',
+      }}
+    >
+      {children}
+    </span>
   );
 }
