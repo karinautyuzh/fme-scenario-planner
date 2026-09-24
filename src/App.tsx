@@ -25,7 +25,7 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ScenarioProvider>
         <Routes>
           <Route element={<AppShell onLogout={handleLogout} />}>
