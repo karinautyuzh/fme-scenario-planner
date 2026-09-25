@@ -19,6 +19,17 @@ export function buildThoughtPartnerContext(
 
   const totalSharedCostBenefitEurM = engine.totalSharedCostBenefit.value;
 
+  const activeKpisByProgram: Record<string, string[]> = {};
+  const standaloneValueByProgram: Record<string, number | null> = {};
+  for (const pid of scenario.selectedPrograms) {
+    const prog = programLibrary.find((p) => p.id === pid);
+    if (prog) {
+      const label = prog.shortName || prog.name;
+      activeKpisByProgram[label] = prog.kpis.filter((k) => k.isActive).map((k) => k.name);
+      standaloneValueByProgram[label] = engine.standaloneValueByProgram[pid]?.value ?? null;
+    }
+  }
+
   return {
     scenarioName: scenario.metadata.name,
     isBaseCaseLocked: scenario.isBaseCaseLocked,
@@ -41,6 +52,8 @@ export function buildThoughtPartnerContext(
     supplyWasteReductionPct: scenario.businessOutcomes.supplyWasteReductionPct.value,
     overallValueCapturePct: scenario.businessOutcomes.overallValueCapturePct.value,
     totalSharedCostBenefitEurM,
+    activeKpisByProgram,
+    standaloneValueByProgram,
   };
 }
 
@@ -116,6 +129,18 @@ const PROMPT_SPECS: PromptSpec[] = [
     text: 'What would improve Speed to Value in this scenario?',
     intent: 'VALUE_DRIVERS',
     show: (ctx) => ctx.selectedProgramCount >= 1 && (ctx.compressionMonths ?? 0) < 12,
+  },
+  {
+    text: 'What KPIs are we measuring for EHR and what do they track?',
+    intent: 'VALUE_DRIVERS',
+    show: (ctx) => ctx.selectedProgramIds.includes('ehr-patient-care'),
+  },
+  {
+    text: 'What is the standalone value of EHR and how was it calculated?',
+    intent: 'CALCULATION',
+    show: (ctx) =>
+      ctx.selectedProgramIds.includes('ehr-patient-care') &&
+      (ctx.standaloneValueByProgram?.['EHR'] ?? null) !== null,
   },
 ];
 

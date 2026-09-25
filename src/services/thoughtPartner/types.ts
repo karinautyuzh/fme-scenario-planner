@@ -31,6 +31,8 @@ export interface ThoughtPartnerContext {
   supplyWasteReductionPct: number | null;
   overallValueCapturePct: number | null;
   totalSharedCostBenefitEurM?: number | null;
+  activeKpisByProgram: Record<string, string[]>;
+  standaloneValueByProgram: Record<string, number | null>;
 }
 
 export interface IndustryInsight {

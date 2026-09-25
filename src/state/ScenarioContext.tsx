@@ -394,6 +394,19 @@ function loadFromStorage(): AppState | null {
         s.programValueInputs = {};
       }
     }
+    // Migrate: rename legacy base-case scenario names
+    const LEGACY_BASE_NAMES = [
+      'Accenture Base Case',
+      'Accenture Base Case - Estimates',
+      'Accenture Base Case – Estimates',
+      'Illustrative Starting Point',
+      'Illustrative Estimates',
+    ];
+    for (const s of parsed.scenarios) {
+      if (s.isBaseCaseLocked && LEGACY_BASE_NAMES.includes(s.metadata?.name ?? '')) {
+        s.metadata.name = 'Illustrative - Requires FME Validation';
+      }
+    }
     return parsed;
   } catch {
     return null;

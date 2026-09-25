@@ -9,9 +9,9 @@ import {
 export const ACCENTURE_BASE_CASE: Scenario = {
   metadata: {
     id: BASE_CASE_ID,
-    name: 'Illustrative Estimates',
+    name: 'Illustrative - Requires FME Validation',
     description:
-      'Starting hypothesis based on comparable healthcare transformations. Multiple programs under integrated design. Values are illustrative — requires FME validation.',
+      'Starting hypothesis based on comparable healthcare transformations. Multiple programs under integrated design. All values are illustrative — requires FME validation before use in any business case.',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     status: 'draft',
