@@ -27,7 +27,7 @@ export interface EnterpriseOutcome {
 
 // ─── Program KPIs ────────────────────────────────────────────────────────────
 
-export type KpiUnit = '%' | '€' | '$' | 'Days' | 'Volume' | 'Rate' | 'Other';
+export type KpiUnit = '%' | '€' | '€M' | '$' | 'Days' | 'Hours' | 'Volume' | 'Count' | 'Rate' | 'Other';
 
 export interface ProgramKPI {
   id: string;
@@ -231,6 +231,44 @@ export interface FinancialBaselines {
   valuePerIncrementalTreatmentEur: Assumption<number>;
 }
 
+// ─── Per-Program XLS Value Inputs ────────────────────────────────────────────
+// Operational drivers sourced from "Fresenius Initiative KPI mapping_Draft.xlsx".
+// Each field maps to a specific XLS value driver formula.
+// Only the relevant subset of fields is used per program ID.
+
+export interface ProgramValueInputs {
+  // ── EHR Operational Benefits (XLS: EHR Operational Benefits sheet) ──────────
+  ehrAnnualOtHours?: Assumption<number>;          // Annual overtime hours baseline
+  ehrOtAddressablePct?: Assumption<number>;        // % of OT addressable by EHR
+  ehrOtImprovementPct?: Assumption<number>;        // Improvement % (reduction)
+  ehrOtNursePct?: Assumption<number>;              // Nurse share of OT hours (%)
+  ehrOtNurseRateEur?: Assumption<number>;          // Nurse avg hourly rate (€)
+  ehrOtPctRateEur?: Assumption<number>;            // PCT avg hourly rate (€)
+  ehrOtPremiumPct?: Assumption<number>;            // OT premium %
+  ehrTurnoverCostBaseEurM?: Assumption<number>;    // Annual turnover cost base (€M)
+  ehrTurnoverImprovementPct?: Assumption<number>;  // Turnover improvement %
+  ehrBackfillHoursBase?: Assumption<number>;       // Annual backfill hours baseline
+  ehrBackfillAddressablePct?: Assumption<number>;  // % of backfill addressable by EHR
+  ehrBackfillImprovementPct?: Assumption<number>;  // Backfill hours improvement %
+  ehrBackfillAvgRateEur?: Assumption<number>;      // Avg incremental backfill rate (€/hr)
+  // ── Supply Chain (XLS: Supply Chain sheet) ───────────────────────────────────
+  scInventoryCostBaseEurM?: Assumption<number>;    // Inventory carrying cost base (€M)
+  scDioImprovementPct?: Assumption<number>;        // DIO reduction %
+  scMaverickSpendBaseEurM?: Assumption<number>;    // Maverick spend cost base (€M)
+  scMaverickReductionPct?: Assumption<number>;     // Maverick spend reduction %
+  // ── ESPHORA Finance (XLS: ESPHORA sheet) ─────────────────────────────────────
+  espFinanceFteCostBaseEurM?: Assumption<number>;  // Finance FTE annual cost base (€M)
+  espFteImprovementPct?: Assumption<number>;       // FTE productivity improvement %
+  espDsoBaselineDays?: Assumption<number>;         // DSO baseline (days)
+  espDsoImprovementPct?: Assumption<number>;       // DSO reduction %
+  espRevenueBaseEurM?: Assumption<number>;         // Revenue base for DSO calc (€M)
+  // ── GEMINI Manufacturing (XLS: CE_Gemini sheet) ──────────────────────────────
+  gemManufacturingCostBaseEurM?: Assumption<number>;    // Manufacturing cost base (€M)
+  gemProductionCostImprovementPct?: Assumption<number>; // Production cost reduction %
+  gemScrapRateBaselinePct?: Assumption<number>;         // Scrap rate baseline %
+  gemScrapRateTargetPct?: Assumption<number>;           // Scrap rate target %
+}
+
 // ─── Scenario ────────────────────────────────────────────────────────────────
 
 export type ScenarioStatus = 'draft' | 'complete';
@@ -253,6 +291,7 @@ export interface Scenario {
   timing: TransformationTimingAssumptions;
   financialBaselines: FinancialBaselines;
   programInvestmentsEurM: Record<string, Assumption<number>>;
+  programValueInputs: Record<string, ProgramValueInputs>;
 }
 
 // ─── App State ────────────────────────────────────────────────────────────────

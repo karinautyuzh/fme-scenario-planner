@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useScenario } from '../state/ScenarioContext';
-import { calcSharedBenefit, calcTotalSharedBenefit, OutcomeId } from '../types';
+import { calcSharedBenefit, calcTotalSharedBenefit, OutcomeId, ProgramValueInputs, Assumption, emptyInput } from '../types';
 import AssumptionSlider from '../components/ui/AssumptionSlider';
 import AssumptionInput from '../components/ui/AssumptionInput';
 import CalcDrawer from '../components/ui/CalcDrawer';
@@ -24,6 +24,7 @@ export default function PressureTest() {
   const [activeTab, setActiveTab] = useState<TabId>('scenario-wide');
 
   const { total: totalSharedBenefit, missingCount } = calcTotalSharedBenefit(sharedCosts);
+  const programValueInputs = activeScenario.programValueInputs ?? {};
   const compressionMonths = timing.compressionMonths.value ?? 0;
   const engine = useEngineOutput(activeScenario);
 
@@ -199,6 +200,17 @@ export default function PressureTest() {
                   </div>
                 </SectionCard>
               )}
+
+              {/* XLS Value Drivers — per-program operational inputs */}
+              <XlsValueDriverSection
+                programId={activeProgram.id}
+                programName={activeProgram.shortName || activeProgram.name}
+                inputs={programValueInputs[activeProgram.id] ?? {}}
+                standaloneValue={engine.standaloneValueByProgram[activeProgram.id] ?? null}
+                onChangeInput={(field, value) =>
+                  dispatch({ type: 'SET_PROGRAM_VALUE_INPUT', programId: activeProgram.id, field, value })
+                }
+              />
             </>
           )}
 
@@ -585,6 +597,187 @@ function TimingRow({ label, value }: { label: string; value: string }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
       <span style={{ fontSize: 12, color: 'var(--grey-3)' }}>{label}</span>
       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--navy)' }}>{value}</span>
+    </div>
+  );
+}
+
+// ─── XLS Value Driver Section ─────────────────────────────────────────────────
+
+function XlsValueDriverSection({
+  programId,
+  programName,
+  inputs,
+  standaloneValue,
+  onChangeInput,
+}: {
+  programId: string;
+  programName: string;
+  inputs: ProgramValueInputs;
+  standaloneValue: CalculationResult | null;
+  onChangeInput: (field: keyof ProgramValueInputs, value: number | null) => void;
+}) {
+  const inp = (field: keyof ProgramValueInputs): Assumption<number> =>
+    (inputs[field] as Assumption<number> | undefined) ?? emptyInput();
+
+  if (programId === 'ehr-patient-care') {
+    return (
+      <SectionCard
+        number="D"
+        title="Workforce Value Drivers (XLS)"
+        subtitle="Bottom-up operational inputs sourced from the FME Initiative KPI mapping workbook. Pre-filled with XLS illustrative values — replace with FME actuals."
+      >
+        <XlsSourceBadge />
+
+        <SubSection title="Overtime Reduction">
+          <AssumptionInput label="Annual Overtime Hours" assumption={inp('ehrAnnualOtHours')} placeholder="5,366,418" onChange={(v) => onChangeInput('ehrAnnualOtHours', v)} />
+          <AssumptionInput label="% Addressable by EHR" assumption={inp('ehrOtAddressablePct')} unit="%" placeholder="20" onChange={(v) => onChangeInput('ehrOtAddressablePct', v)} />
+          <AssumptionInput label="Improvement %" assumption={inp('ehrOtImprovementPct')} unit="%" placeholder="20" onChange={(v) => onChangeInput('ehrOtImprovementPct', v)} />
+          <AssumptionInput label="Nurse Share of OT Hours" assumption={inp('ehrOtNursePct')} unit="%" placeholder="43" onChange={(v) => onChangeInput('ehrOtNursePct', v)} />
+          <AssumptionInput label="Nurse Avg Hourly Rate" assumption={inp('ehrOtNurseRateEur')} unit="€/hr" placeholder="44" onChange={(v) => onChangeInput('ehrOtNurseRateEur', v)} />
+          <AssumptionInput label="PCT Avg Hourly Rate" assumption={inp('ehrOtPctRateEur')} unit="€/hr" placeholder="28" onChange={(v) => onChangeInput('ehrOtPctRateEur', v)} />
+          <AssumptionInput label="OT Premium" assumption={inp('ehrOtPremiumPct')} unit="%" placeholder="50" onChange={(v) => onChangeInput('ehrOtPremiumPct', v)} />
+        </SubSection>
+
+        <SubSection title="Turnover — Hiring & Deployment">
+          <AssumptionInput label="Annual Turnover Cost Base" assumption={inp('ehrTurnoverCostBaseEurM')} unit="€M" placeholder="90" onChange={(v) => onChangeInput('ehrTurnoverCostBaseEurM', v)} />
+          <AssumptionInput label="Turnover Improvement %" assumption={inp('ehrTurnoverImprovementPct')} unit="%" placeholder="10" onChange={(v) => onChangeInput('ehrTurnoverImprovementPct', v)} />
+        </SubSection>
+
+        <SubSection title="Backfill Hours">
+          <AssumptionInput label="Annual Backfill Hours" assumption={inp('ehrBackfillHoursBase')} placeholder="1,732,667" onChange={(v) => onChangeInput('ehrBackfillHoursBase', v)} />
+          <AssumptionInput label="% Addressable by EHR" assumption={inp('ehrBackfillAddressablePct')} unit="%" placeholder="50" onChange={(v) => onChangeInput('ehrBackfillAddressablePct', v)} />
+          <AssumptionInput label="Improvement %" assumption={inp('ehrBackfillImprovementPct')} unit="%" placeholder="10" onChange={(v) => onChangeInput('ehrBackfillImprovementPct', v)} />
+          <AssumptionInput label="Avg Incremental Backfill Rate" assumption={inp('ehrBackfillAvgRateEur')} unit="€/hr" placeholder="7" onChange={(v) => onChangeInput('ehrBackfillAvgRateEur', v)} />
+        </SubSection>
+
+        <StandaloneValueResult result={standaloneValue} programName={programName} />
+      </SectionCard>
+    );
+  }
+
+  if (programId === 'supply-chain') {
+    return (
+      <SectionCard
+        number="D"
+        title="Supply Chain Value Drivers (XLS)"
+        subtitle="Operational inputs for supply chain standalone value calculation. Enter FME actuals to enable bottom-up value modeling."
+      >
+        <XlsSourceBadge />
+        <SubSection title="Inventory Optimization">
+          <AssumptionInput label="Inventory Carrying Cost Base" assumption={inp('scInventoryCostBaseEurM')} unit="€M" placeholder="Enter FME value" onChange={(v) => onChangeInput('scInventoryCostBaseEurM', v)} />
+          <AssumptionInput label="DIO Improvement %" assumption={inp('scDioImprovementPct')} unit="%" placeholder="Enter % reduction" onChange={(v) => onChangeInput('scDioImprovementPct', v)} />
+        </SubSection>
+        <SubSection title="Maverick Spend Reduction">
+          <AssumptionInput label="Maverick Spend Cost Base" assumption={inp('scMaverickSpendBaseEurM')} unit="€M" placeholder="Enter FME value" onChange={(v) => onChangeInput('scMaverickSpendBaseEurM', v)} />
+          <AssumptionInput label="Maverick Spend Reduction %" assumption={inp('scMaverickReductionPct')} unit="%" placeholder="Enter %" onChange={(v) => onChangeInput('scMaverickReductionPct', v)} />
+        </SubSection>
+        <StandaloneValueResult result={standaloneValue} programName={programName} />
+      </SectionCard>
+    );
+  }
+
+  if (programId === 'esphora-cd') {
+    return (
+      <SectionCard
+        number="D"
+        title="Finance Value Drivers (XLS)"
+        subtitle="S/4HANA finance operational inputs for standalone value calculation. Enter FME actuals to enable modeling."
+      >
+        <XlsSourceBadge />
+        <SubSection title="Finance FTE Productivity">
+          <AssumptionInput label="Finance FTE Annual Cost Base" assumption={inp('espFinanceFteCostBaseEurM')} unit="€M" placeholder="Enter FME value" onChange={(v) => onChangeInput('espFinanceFteCostBaseEurM', v)} />
+          <AssumptionInput label="FTE Productivity Improvement %" assumption={inp('espFteImprovementPct')} unit="%" placeholder="Enter %" onChange={(v) => onChangeInput('espFteImprovementPct', v)} />
+        </SubSection>
+        <SubSection title="DSO Working Capital Release">
+          <AssumptionInput label="Revenue Base" assumption={inp('espRevenueBaseEurM')} unit="€M" placeholder="Enter FME value" onChange={(v) => onChangeInput('espRevenueBaseEurM', v)} />
+          <AssumptionInput label="DSO Baseline (Days)" assumption={inp('espDsoBaselineDays')} unit="Days" placeholder="Enter FME value" onChange={(v) => onChangeInput('espDsoBaselineDays', v)} />
+          <AssumptionInput label="DSO Improvement %" assumption={inp('espDsoImprovementPct')} unit="%" placeholder="Enter %" onChange={(v) => onChangeInput('espDsoImprovementPct', v)} />
+        </SubSection>
+        <StandaloneValueResult result={standaloneValue} programName={programName} />
+      </SectionCard>
+    );
+  }
+
+  if (programId === 'gemini') {
+    return (
+      <SectionCard
+        number="D"
+        title="Manufacturing Value Drivers (XLS)"
+        subtitle="CE ERP + MES operational inputs for standalone value calculation. Enter FME actuals to enable modeling."
+      >
+        <XlsSourceBadge />
+        <SubSection title="Production Cost Improvement">
+          <AssumptionInput label="Manufacturing Cost Base" assumption={inp('gemManufacturingCostBaseEurM')} unit="€M" placeholder="Enter FME value" onChange={(v) => onChangeInput('gemManufacturingCostBaseEurM', v)} />
+          <AssumptionInput label="Production Cost Improvement %" assumption={inp('gemProductionCostImprovementPct')} unit="%" placeholder="Enter %" onChange={(v) => onChangeInput('gemProductionCostImprovementPct', v)} />
+        </SubSection>
+        <SubSection title="Scrap Reduction">
+          <AssumptionInput label="Scrap Rate Baseline" assumption={inp('gemScrapRateBaselinePct')} unit="%" placeholder="Enter %" onChange={(v) => onChangeInput('gemScrapRateBaselinePct', v)} />
+          <AssumptionInput label="Scrap Rate Target" assumption={inp('gemScrapRateTargetPct')} unit="%" placeholder="Enter %" onChange={(v) => onChangeInput('gemScrapRateTargetPct', v)} />
+        </SubSection>
+        <StandaloneValueResult result={standaloneValue} programName={programName} />
+      </SectionCard>
+    );
+  }
+
+  return null;
+}
+
+function XlsSourceBadge() {
+  return (
+    <div style={{ marginBottom: 16, padding: '8px 12px', background: '#EBF4FF', borderLeft: '3px solid var(--blue)', fontSize: 11, color: 'var(--navy)', lineHeight: 1.5 }}>
+      <strong>Source: FME Initiative KPI mapping workbook.</strong> Values pre-filled with XLS illustrative starting points. Replace with FME actuals for a validated model.
+    </div>
+  );
+}
+
+function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid var(--grey-1)' }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function StandaloneValueResult({ result, programName }: { result: CalculationResult | null; programName: string }) {
+  if (!result) return null;
+  const isCalc = result.status === 'CALCULATED' || result.status === 'PARTIAL';
+  return (
+    <div style={{ marginTop: 4, padding: '14px 16px', background: isCalc ? '#E6F6F7' : 'var(--grey-0)', borderLeft: `3px solid ${isCalc ? 'var(--teal)' : 'var(--grey-1)'}` }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: isCalc ? 'var(--teal)' : 'var(--grey-2)', marginBottom: 6 }}>
+        {programName} — Standalone Value (XLS Model)
+      </div>
+      {isCalc && result.value !== null ? (
+        <>
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--teal)' }}>
+            €{result.value.toFixed(1)}M/yr
+            {result.status === 'PARTIAL' && (
+              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--grey-2)', marginLeft: 8 }}>PARTIAL</span>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--grey-3)', marginTop: 4 }}>{result.calculationDescription}</div>
+          {result.inputs && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {Object.entries(result.inputs).map(([k, v]) =>
+                v !== null ? (
+                  <div key={k} style={{ fontSize: 10, color: 'var(--grey-3)' }}>
+                    {k}: <strong style={{ color: 'var(--navy)' }}>€{(v as number).toFixed(1)}M</strong>
+                  </div>
+                ) : null
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--grey-2)', fontStyle: 'italic' }}>
+          {result.requiredInputs.length > 0
+            ? `Missing: ${result.requiredInputs.slice(0, 3).join(', ')}`
+            : 'Enter value drivers above to calculate'}
+        </div>
+      )}
+      <CalcDrawer result={result} label={`${programName} Standalone Value`} />
     </div>
   );
 }

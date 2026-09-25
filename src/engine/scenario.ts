@@ -1,6 +1,7 @@
 import { Scenario } from '../types';
 import { calcTotalSharedBenefit } from '../types';
 import { ScenarioEngineOutput } from './types';
+import { calcAllStandaloneValues } from './xlsValueEngine';
 import {
   calcIncrementalVolume,
   calcVolumeValue,
@@ -18,6 +19,11 @@ import {
 } from './timing';
 
 export function computeScenarioOutput(scenario: Scenario): ScenarioEngineOutput {
+  // XLS-derived standalone program value (Layer 1)
+  const programValueInputs = scenario.programValueInputs ?? {};
+  const { byProgram: standaloneValueByProgram, total: totalStandaloneValue } =
+    calcAllStandaloneValues(scenario.selectedPrograms, programValueInputs);
+
   // Business outcomes
   const incrementalTreatmentVolume = calcIncrementalVolume(scenario);
   const potentialAnnualVolumeValue = calcVolumeValue(scenario);
@@ -88,6 +94,8 @@ export function computeScenarioOutput(scenario: Scenario): ScenarioEngineOutput 
     valueCurve,
     valueAccelerated2030,
     valueAccelerated2035,
+    standaloneValueByProgram,
+    totalStandaloneValue,
     hasEnoughForCurve,
     missingFinancialInputs,
   };

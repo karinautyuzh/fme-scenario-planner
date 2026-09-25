@@ -4,6 +4,7 @@ import {
   Scenario,
   ProgramLibraryEntry,
   ProgramKPI,
+  ProgramValueInputs,
   OutcomeId,
   ValueRealizationSpeed,
   BASE_CASE_ID,
@@ -39,7 +40,8 @@ type Action =
   | { type: 'ADD_CUSTOM_KPI'; programId: string; kpi: ProgramKPI }
   | { type: 'UPDATE_PROGRAM_KPI'; programId: string; kpiId: string; updates: Partial<ProgramKPI> }
   | { type: 'SET_PROGRAM_OUTCOME_PRIORITY'; programId: string; outcomeId: OutcomeId; value: number }
-  | { type: 'SET_PROGRAM_FIELD'; programId: string; field: string; value: unknown };
+  | { type: 'SET_PROGRAM_FIELD'; programId: string; field: string; value: unknown }
+  | { type: 'SET_PROGRAM_VALUE_INPUT'; programId: string; field: keyof ProgramValueInputs; value: number | null };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -333,6 +335,23 @@ function reducer(state: AppState, action: Action): AppState {
         [action.field]: action.value,
       }));
 
+    case 'SET_PROGRAM_VALUE_INPUT':
+      return updateActive(state, (s) => {
+        const current = s.programValueInputs ?? {};
+        const programInputs = current[action.programId] ?? {};
+        const existing = (programInputs[action.field] as ReturnType<typeof emptyInput> | undefined) ?? emptyInput();
+        return {
+          ...s,
+          programValueInputs: {
+            ...current,
+            [action.programId]: {
+              ...programInputs,
+              [action.field]: adjustAssumption(existing, action.value),
+            },
+          },
+        };
+      });
+
     default:
       return state;
   }
@@ -344,6 +363,7 @@ function buildInitialState(): AppState {
   const baseCaseCopy: Scenario = {
     ...JSON.parse(JSON.stringify(ACCENTURE_BASE_CASE)),
     metadata: { ...ACCENTURE_BASE_CASE.metadata, createdAt: new Date().toISOString() },
+    programValueInputs: JSON.parse(JSON.stringify(ACCENTURE_BASE_CASE.programValueInputs ?? {})),
   };
   return {
     scenarios: [baseCaseCopy],
@@ -367,6 +387,12 @@ function loadFromStorage(): AppState | null {
     // Migrate: add programLibrary if missing
     if (!Array.isArray(parsed.programLibrary) || !parsed.programLibrary.length) {
       parsed.programLibrary = JSON.parse(JSON.stringify(INITIAL_PROGRAM_LIBRARY));
+    }
+    // Migrate: add programValueInputs if missing from any scenario
+    for (const s of parsed.scenarios) {
+      if (!s.programValueInputs) {
+        s.programValueInputs = {};
+      }
     }
     return parsed;
   } catch {

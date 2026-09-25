@@ -47,6 +47,10 @@ export interface ScenarioEngineOutput {
   valueAccelerated2030: CalculationResult<number>;
   valueAccelerated2035: CalculationResult<number>;
 
+  // XLS-derived standalone program value (Layer 1 — program value independent of integration)
+  standaloneValueByProgram: Record<string, CalculationResult>;
+  totalStandaloneValue: CalculationResult;
+
   // Meta
   hasEnoughForCurve: boolean;
   missingFinancialInputs: string[];

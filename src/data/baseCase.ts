@@ -94,4 +94,28 @@ export const ACCENTURE_BASE_CASE: Scenario = {
     'supply-chain': emptyInput(),
     'gemini': emptyInput(),
   },
+
+  // XLS illustrative operational inputs per program
+  // EHR values sourced from "EHR Operational Benefits" sheet (conservative scenario)
+  // USD amounts converted at ~1:0.92 (labeled accenture-estimate; FME to validate)
+  programValueInputs: {
+    'ehr-patient-care': {
+      ehrAnnualOtHours:          accentureEstimate(5_366_418),
+      ehrOtAddressablePct:       accentureEstimate(20),
+      ehrOtImprovementPct:       accentureEstimate(20),
+      ehrOtNursePct:             accentureEstimate(43),
+      ehrOtNurseRateEur:         accentureEstimate(44),
+      ehrOtPctRateEur:           accentureEstimate(28),
+      ehrOtPremiumPct:           accentureEstimate(50),
+      ehrTurnoverCostBaseEurM:   accentureEstimate(90),
+      ehrTurnoverImprovementPct: accentureEstimate(10),
+      ehrBackfillHoursBase:      accentureEstimate(1_732_667),
+      ehrBackfillAddressablePct: accentureEstimate(50),
+      ehrBackfillImprovementPct: accentureEstimate(10),
+      ehrBackfillAvgRateEur:     accentureEstimate(7),
+    },
+    'supply-chain': {},
+    'esphora-cd':   {},
+    'gemini':       {},
+  },
 };

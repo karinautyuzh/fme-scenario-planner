@@ -360,6 +360,7 @@ export function RealizeValue() {
   const compressionMonths = activeScenario.timing.compressionMonths.value ?? 0;
   const sharedCostVal = engine.totalSharedCostBenefit.value;
   const annualVal = engine.totalAnnualBusinessValue.value;
+  const standaloneTotal = engine.totalStandaloneValue;
 
   // Top integration drivers: exclude business-outcome (not integration-specific), sort by score desc
   const drivingDims = useMemo(() => {
@@ -448,7 +449,8 @@ export function RealizeValue() {
             {[
               { label: 'Integration Score', value: `${overallScore}/100` },
               { label: 'Programs Modeled', value: `${sp.length}` },
-              ...(annualVal !== null ? [{ label: 'Annual Value', value: `€${annualVal.toFixed(1)}M` }] : []),
+              ...(standaloneTotal.value !== null ? [{ label: 'Standalone Value (XLS)', value: `€${standaloneTotal.value.toFixed(1)}M${standaloneTotal.status === 'PARTIAL' ? '+' : ''}` }] : []),
+              ...(annualVal !== null ? [{ label: 'Scenario Annual Value', value: `€${annualVal.toFixed(1)}M` }] : []),
               ...(sharedCostVal !== null ? [{ label: 'Shared Cost Benefit', value: `€${sharedCostVal.toFixed(1)}M` }] : []),
               ...(compressionMonths > 0 ? [{ label: 'Timeline Compression', value: `${compressionMonths}mo` }] : []),
             ].map(({ label, value }) => (
@@ -743,18 +745,38 @@ export function RealizeValue() {
                     </div>
                   )}
 
-                  {/* Illustrative value */}
-                  {program.illustrativeValueEurM.value !== null && (
-                    <div style={{ marginBottom: 12 }}>
-                      <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 2 }}>
-                        Illustrative Value
-                      </div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)' }}>
-                        €{program.illustrativeValueEurM.value}M
-                        <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--grey-2)', marginLeft: 4 }}>ILLUSTRATIVE — REQUIRES FME VALIDATION</span>
-                      </div>
-                    </div>
-                  )}
+                  {/* XLS-derived standalone value */}
+                  {(() => {
+                    const sv = engine.standaloneValueByProgram[program.id];
+                    if (sv && sv.value !== null) {
+                      return (
+                        <div style={{ marginBottom: 12, padding: '10px 12px', background: '#E6F6F7', borderLeft: '3px solid var(--teal)' }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--teal)', marginBottom: 2 }}>
+                            Standalone Value — XLS Model
+                          </div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--navy)' }}>
+                            €{sv.value.toFixed(1)}M/yr
+                            {sv.status === 'PARTIAL' && <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--grey-2)', marginLeft: 4 }}>PARTIAL</span>}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--grey-3)', marginTop: 2 }}>Independent of integration effects</div>
+                        </div>
+                      );
+                    }
+                    if (program.illustrativeValueEurM.value !== null) {
+                      return (
+                        <div style={{ marginBottom: 12 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 2 }}>
+                            Illustrative Value
+                          </div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--navy)' }}>
+                            €{program.illustrativeValueEurM.value}M
+                            <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--grey-2)', marginLeft: 4 }}>ILLUSTRATIVE — REQUIRES FME VALIDATION</span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Shared factors */}
                   <div style={{ marginBottom: connections.length > 0 ? 12 : 0 }}>

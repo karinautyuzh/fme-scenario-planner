@@ -10,55 +10,118 @@ function kpi(
   return { id, name, baseline: '', target: '', unit, outcomeIds, isCustom: false, isActive: true, context };
 }
 
+// ─── EHR KPIs (sourced from XLS: EHR + EHR Operational Benefits sheets) ──────
+
 const EHR_KPIS: ProgramKPI[] = [
-  kpi('ehr-volume', 'Patient / Treatment Volume', ['grow-patient-volume'], '%', 'Measures increase in scheduled and completed treatment sessions.'),
-  kpi('ehr-noshow', 'No-show Rate', ['grow-patient-volume'], '%', 'Percentage of scheduled treatments where the patient does not attend.'),
-  kpi('ehr-cancellation', 'Cancellation Rate', ['grow-patient-volume'], '%', 'Percentage of appointments cancelled by the patient or clinic.'),
-  kpi('ehr-productivity', 'Clinic Productivity', ['reduce-cost-per-treatment'], '%', 'Treatments delivered per clinical FTE or per hour of available capacity.'),
-  kpi('ehr-overtime', 'Overtime Hours', ['reduce-cost-per-treatment'], '%', 'Reduction in overtime driven by better scheduling and workflow management.'),
-  kpi('ehr-dso', 'DSO (Days Sales Outstanding)', ['scalable-digital-enterprise'], 'Days', 'Days between service delivery and payment receipt.'),
+  kpi('ehr-noshow', 'No-Show / Non-Attendance Rate', ['grow-patient-volume'], '%',
+    'Percentage of scheduled treatments where the patient does not attend. Improved scheduling and reminders reduce no-shows.'),
+  kpi('ehr-drop-rate', 'Patient Drop Rate', ['grow-patient-volume'], '%',
+    'Percentage of patients who discontinue care. Better care coordination and engagement reduce dropout.'),
+  kpi('ehr-referral-velocity', 'Referral-to-Treatment Time', ['grow-patient-volume'], 'Days',
+    'Average days from referral receipt to first treatment session. Faster referral processing increases patient volume.'),
+  kpi('ehr-consumables-waste', 'Consumables Waste Rate', ['reduce-cost-per-treatment'], '%',
+    'Proportion of consumables disposed of unused. Better inventory integration and usage tracking reduces clinical waste.'),
+  kpi('ehr-overtime-hours', 'Annual Overtime Hours', ['reduce-cost-per-treatment'], 'Hours',
+    'Total overtime hours worked annually. EHR scheduling and workflow tools reduce overtime demand. XLS illustrative baseline: 5,366,418 hrs/yr.'),
+  kpi('ehr-staff-turnover', 'Nursing / PCT Turnover Rate', ['reduce-cost-per-treatment'], '%',
+    'Annual staff turnover rate for nursing and PCT roles. EHR improves workflow satisfaction and reduces avoidable turnover. XLS illustrative: ~19% nurses / ~24% PCTs.'),
+  kpi('ehr-agency-spend', 'Agency Staffing Spend', ['reduce-cost-per-treatment'], '€M',
+    'Annual spend on premium agency/temporary staff driven by turnover-related vacancies.'),
+  kpi('ehr-turnover-cost', 'Turnover Cost — Hiring & Deployment', ['reduce-cost-per-treatment'], '€M',
+    'Annual cost of hiring, onboarding, and deploying replacement staff. XLS illustrative: ~€90M/yr.'),
+  kpi('ehr-backfill-hours', 'Backfill Hours', ['reduce-cost-per-treatment'], 'Hours',
+    'Hours of incremental backfill pay for staff covering vacant positions. XLS illustrative: 1,732,667 hrs/yr.'),
+  kpi('ehr-denial-rate', 'Claims Denial Rate', ['scalable-digital-enterprise'], '%',
+    'Percentage of submitted claims denied by payers. Improved coding accuracy reduces denials.'),
+  kpi('ehr-dso', 'Days Sales Outstanding (DSO)', ['scalable-digital-enterprise'], 'Days',
+    'Average days from treatment delivery to payment receipt. Revenue cycle modernization accelerates cash collection.'),
 ];
+
+// ─── Supply Chain KPIs (sourced from XLS: Supply Chain sheet) ────────────────
 
 const SUPPLY_KPIS: ProgramKPI[] = [
-  kpi('sc-inventory-turns', 'Inventory Turns', ['reduce-cost-per-treatment'], '%', 'How frequently inventory is replenished — higher turns reduce carrying cost.'),
-  kpi('sc-stockout', 'Stockout Rate', ['reduce-cost-per-treatment'], '%', 'Percentage of treatments where a required supply was unavailable.'),
-  kpi('sc-waste', 'Supply / Consumable Waste', ['reduce-cost-per-treatment'], '%', 'Proportion of consumables disposed of unused — target for reduction.'),
-  kpi('sc-lead-time', 'Procurement Lead Time', ['scalable-digital-enterprise'], 'Days', 'Average days from requisition to supply availability.'),
-  kpi('sc-cost-per', 'Cost Per Treatment (Supply)', ['reduce-cost-per-treatment'], '€', 'Supply and consumable cost attributable to a single treatment.'),
+  kpi('sc-dio', 'Days Inventory Outstanding (DIO)', ['reduce-cost-per-treatment'], 'Days',
+    'Average days of inventory on hand. DIO reduction frees working capital and reduces carrying cost.'),
+  kpi('sc-inventory-turns', 'Inventory Turnover Ratio', ['reduce-cost-per-treatment'], 'Other',
+    'Times inventory is replenished annually. Higher turns indicate leaner, more efficient inventory management.'),
+  kpi('sc-forecast-mape', 'Forecast Accuracy (MAPE)', ['reduce-cost-per-treatment'], '%',
+    'Mean Absolute Percentage Error of demand forecasts. Lower MAPE reduces safety stock and stockouts.'),
+  kpi('sc-stockout-rate', 'Stockout Rate (Critical SKUs)', ['reduce-cost-per-treatment'], '%',
+    'Percentage of instances where a critical medical supply SKU was unavailable when needed for treatment.'),
+  kpi('sc-order-fill', 'Order Fill Rate', ['reduce-cost-per-treatment'], '%',
+    'Percentage of orders fulfilled completely and on-time from stock.'),
+  kpi('sc-otif', 'OTIF — On-Time In-Full', ['reduce-cost-per-treatment'], '%',
+    'Percentage of orders delivered on time and in full. OTIF improvement reduces last-minute substitutions.'),
+  kpi('sc-supplier-otif', 'Supplier OTIF', ['scalable-digital-enterprise'], '%',
+    'Supplier-side on-time, in-full delivery rate. Vendor consolidation improves supplier reliability.'),
+  kpi('sc-maverick-spend', 'Maverick Spend Rate', ['reduce-cost-per-treatment'], '%',
+    'Unauthorized or off-contract purchasing as a % of total spend. Vendor consolidation reduces maverick spend.'),
+  kpi('sc-obsolete-inventory', 'Inventory Write-off / Obsolescence', ['reduce-cost-per-treatment'], '€M',
+    'Annual value of inventory written off due to expiry or obsolescence.'),
+  kpi('sc-transport-pct', 'Transportation Spend (% Revenue)', ['scalable-digital-enterprise'], '%',
+    'Total inbound + outbound transportation cost as a proportion of revenue.'),
+  kpi('sc-expedited-pct', 'Expedited Shipment Rate', ['reduce-cost-per-treatment'], '%',
+    'Percentage of orders requiring expedited (premium) shipping. Lower rate means better planning.'),
 ];
+
+// ─── ESPHORA KPIs (sourced from XLS: ESPHORA sheet — S/4HANA Finance) ────────
 
 const ESPHORA_KPIS: ProgramKPI[] = [
-  kpi('esp-data-completeness', 'Clinical Data Completeness', ['scalable-digital-enterprise'], '%', 'Proportion of patient records with all required clinical data fields completed.'),
-  kpi('esp-trial-productivity', 'Trial Site Productivity', ['grow-patient-volume'], '%', 'Patient throughput and protocol compliance across clinical trial sites.'),
-  kpi('esp-submission-time', 'Regulatory Submission Time', ['scalable-digital-enterprise'], 'Days', 'Average days to prepare and submit regulatory documentation.'),
-  kpi('esp-data-quality', 'Data Quality Score', ['scalable-digital-enterprise'], '%', 'Composite measure of accuracy, completeness, and timeliness of clinical data.'),
+  kpi('esp-close-days', 'Finance Close Cycle Time', ['scalable-digital-enterprise'], 'Days',
+    'Days from period end to published financial close. Automated journal entry and reconciliation reduce close cycle time.'),
+  kpi('esp-fte-productivity', 'Finance FTE Productivity', ['scalable-digital-enterprise'], '%',
+    'Productive hours per finance FTE as a proportion of total capacity. Automation reduces manual effort.'),
+  kpi('esp-automation-rate', 'Process Automation Rate', ['scalable-digital-enterprise'], '%',
+    'Percentage of finance transactions processed without manual intervention.'),
+  kpi('esp-dso', 'Days Sales Outstanding (DSO)', ['scalable-digital-enterprise'], 'Days',
+    'Average days from invoice to cash receipt. DSO reduction releases working capital.'),
+  kpi('esp-audit-cost', 'Audit & Compliance Cost', ['scalable-digital-enterprise'], '€M',
+    'Annual cost of internal and external audit preparation. Automation and data integrity reduce audit effort.'),
+  kpi('esp-resource-efficiency', 'Finance Resource Efficiency', ['scalable-digital-enterprise'], '%',
+    'Finance overhead as a percentage of revenue. Target: reduction through process digitization.'),
 ];
 
+// ─── GEMINI KPIs (sourced from XLS: CE_Gemini sheet — CE ERP + MES) ──────────
+
 const GEMINI_KPIS: ProgramKPI[] = [
-  kpi('gem-finance-productivity', 'Finance Team Productivity', ['scalable-digital-enterprise'], '%', 'Finance FTE hours saved through automated reporting and consolidated data access.'),
-  kpi('gem-dso', 'DSO Reduction', ['scalable-digital-enterprise'], 'Days', 'Reduction in days sales outstanding enabled by real-time financial visibility.'),
-  kpi('gem-report-time', 'Report Generation Time', ['scalable-digital-enterprise'], 'Days', 'Time to produce standard management and financial reports.'),
-  kpi('gem-data-coverage', 'Consolidated Data Coverage', ['scalable-digital-enterprise'], '%', 'Proportion of enterprise data sources integrated into GEMINI reporting layer.'),
+  kpi('gem-oee', 'Overall Equipment Effectiveness (OEE)', ['reduce-cost-per-treatment'], '%',
+    'Composite measure of equipment availability, performance rate, and quality rate for Gemini plant machinery.'),
+  kpi('gem-capacity-util', 'Manufacturing Capacity Utilization', ['grow-patient-volume'], '%',
+    'Actual output as a percentage of maximum rated output. MES enables better scheduling and reduces downtime.'),
+  kpi('gem-plan-accuracy', 'Production Plan Accuracy', ['reduce-cost-per-treatment'], '%',
+    'Percentage of production runs completed on schedule and at target volume.'),
+  kpi('gem-scrap-rate', 'Manufacturing Scrap / Shrinkage Rate', ['reduce-cost-per-treatment'], '%',
+    'Proportion of input materials lost to defects, rework, or waste. MES-driven SPC reduces scrap.'),
+  kpi('gem-prod-cost', 'Production Cost per Unit', ['reduce-cost-per-treatment'], '€M',
+    'Manufacturing cost per dialyzer unit. Efficiency, scrap reduction, and better yield improve unit cost.'),
+  kpi('gem-asset-util', 'Asset Utilization Rate', ['scalable-digital-enterprise'], '%',
+    'Productive use of manufacturing assets relative to total available capacity.'),
+  kpi('gem-warehouse-cost', 'Warehouse Cost', ['reduce-cost-per-treatment'], '€M',
+    'Annual cost of warehousing finished goods and raw materials at Gemini and AMD plants.'),
+  kpi('gem-inventory-cost', 'Manufacturing Inventory Cost', ['reduce-cost-per-treatment'], '€M',
+    'Carrying cost of WIP and finished goods inventory.'),
 ];
+
+// ─── Program Library ──────────────────────────────────────────────────────────
 
 export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
   {
     id: 'esphora-cd',
-    name: 'ESPHORA / CD Transformation',
-    shortName: 'ESPHORA / CD',
+    name: 'ESPHORA',
+    shortName: 'ESPHORA',
     description:
-      'Clinical Data and ESPHORA modernization enabling unified patient and trial data, streamlined regulatory submission workflows, and a foundation for data-driven clinical operations.',
+      'Core finance and operations transformation implementing S/4HANA and GBS Finance Automation (A2R, P2P, Order-to-Cash). Digitizes and automates finance workflows — Accounts Receivable, Payable, and Order-to-Cash — to drive close-cycle efficiency, FTE productivity, and DSO reduction.',
     isBuiltIn: true,
     status: 'planned',
     startTiming: 'Q1 2026',
     targetCompletion: 'Q2 2027',
     investmentEurM: emptyInput(),
     illustrativeValueEurM: emptyInput(),
-    outcomes: ['grow-patient-volume', 'scalable-digital-enterprise'],
+    outcomes: ['reduce-cost-per-treatment', 'scalable-digital-enterprise'],
     outcomePriorities: {
-      'grow-patient-volume': 70,
-      'reduce-cost-per-treatment': 30,
-      'scalable-digital-enterprise': 85,
+      'grow-patient-volume': 20,
+      'reduce-cost-per-treatment': 70,
+      'scalable-digital-enterprise': 90,
     },
     kpis: ESPHORA_KPIS,
     dependencies: [],
@@ -69,9 +132,9 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
     timingDependency: false,
     dependencyContext: '',
     integrationHypothesis:
-      'Integrated design with EHR creates a shared patient data layer, eliminating duplicate clinical data architecture and accelerating both programs.',
+      'Integrated design with EHR creates a shared patient-to-cost data model. Finance automation connects directly to clinical revenue data, eliminating a separate revenue reconciliation workstream and accelerating the cash collection cycle.',
     defaultTimeline: { startMonth: 0, durationMonths: 18 },
-    additionalContext: '',
+    additionalContext: 'Sub-initiatives: S/4HANA Core Finance & Operations; GBS Finance Automation (A2R, P2P, Order-to-Cash).',
     notes: '',
     costAssumptions: {
       governanceCostBaseEurM: emptyInput(),
@@ -86,7 +149,7 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
     name: 'EHR / Patient Care',
     shortName: 'EHR / Patient Care',
     description:
-      'Electronic Health Record implementation transforming point-of-care workflows, patient engagement, and clinical decision support across FME treatment centers.',
+      'Electronic Health Record transformation replacing Soarian with a modern EHR platform, redesigning clinical workflows and documentation, restructuring the clinical operating model and workforce, and modernizing the revenue cycle to reduce denials and accelerate cash collection.',
     isBuiltIn: true,
     status: 'planned',
     startTiming: 'Q1 2026',
@@ -96,7 +159,7 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
     outcomes: ['grow-patient-volume', 'reduce-cost-per-treatment', 'scalable-digital-enterprise'],
     outcomePriorities: {
       'grow-patient-volume': 90,
-      'reduce-cost-per-treatment': 80,
+      'reduce-cost-per-treatment': 85,
       'scalable-digital-enterprise': 70,
     },
     kpis: EHR_KPIS,
@@ -108,9 +171,9 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
     timingDependency: false,
     dependencyContext: '',
     integrationHypothesis:
-      'Integrated design with ESPHORA/CD and Supply Chain enables a single patient-to-cost data model, reducing per-treatment cost and increasing throughput simultaneously.',
+      'Integrated design with ESPHORA and Supply Chain enables a single patient-to-cost data model, reducing per-treatment cost and increasing throughput simultaneously. EHR operational data feeds directly into the supply chain replenishment signal, eliminating a separate demand-modeling workstream.',
     defaultTimeline: { startMonth: 2, durationMonths: 24 },
-    additionalContext: '',
+    additionalContext: 'Sub-initiatives: EHR/EMR Platform Implementation (Soarian Replacement); Clinical Workflow Redesign; Clinical Operating Model & Workforce Redesign; Revenue Cycle Modernization & Denial Reduction. XLS workforce value drivers quantified for OT, turnover, and backfill.',
     notes: '',
     costAssumptions: {
       governanceCostBaseEurM: emptyInput(),
@@ -125,7 +188,7 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
     name: 'Supply Chain',
     shortName: 'Supply Chain',
     description:
-      'End-to-end supply chain transformation optimizing medical supply procurement, inventory management, and logistics to reduce treatment cost and waste.',
+      'End-to-end supply chain transformation comprising network redesign and vendor consolidation, followed by demand-driven replenishment and inventory optimization. Targets reduction in Days Inventory Outstanding, improved forecast accuracy, higher OTIF performance, and elimination of maverick spend.',
     isBuiltIn: true,
     status: 'planned',
     startTiming: 'Q2 2026',
@@ -147,9 +210,9 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
     timingDependency: false,
     dependencyContext: '',
     integrationHypothesis:
-      'Integrated design with EHR connects clinical demand signals to procurement in real time, compressing the supply chain program by eliminating a separate demand-modeling workstream.',
+      'Integrated design with EHR connects clinical demand signals to procurement in real time, compressing the supply chain program by eliminating a separate demand-modeling workstream and enabling dynamic replenishment based on actual treatment schedules.',
     defaultTimeline: { startMonth: 3, durationMonths: 20 },
-    additionalContext: '',
+    additionalContext: 'Sub-initiatives: Supply Chain Network Redesign & Vendor Consolidation; Demand-Driven Replenishment & Inventory Optimization.',
     notes: '',
     costAssumptions: {
       governanceCostBaseEurM: emptyInput(),
@@ -161,21 +224,21 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
   },
   {
     id: 'gemini',
-    name: 'GEMINI',
-    shortName: 'GEMINI',
+    name: 'CE / GEMINI',
+    shortName: 'CE / GEMINI',
     description:
-      'Enterprise management and intelligence platform providing FME leadership with unified financial, operational, and patient-journey reporting across the organization.',
+      'Care Enablement ERP transformation implementing R6 NexStage to redesign care delivery processes, combined with a Manufacturing Execution System (MES) for Gemini dialyzer plants and AMD plant templates. Targets OEE improvement, production cost reduction, quality uplift, and warehouse efficiency.',
     isBuiltIn: true,
     status: 'planned',
     startTiming: 'Q1 2026',
     targetCompletion: 'Q2 2027',
     investmentEurM: emptyInput(),
     illustrativeValueEurM: emptyInput(),
-    outcomes: ['grow-patient-volume', 'scalable-digital-enterprise'],
+    outcomes: ['grow-patient-volume', 'reduce-cost-per-treatment', 'scalable-digital-enterprise'],
     outcomePriorities: {
       'grow-patient-volume': 50,
-      'reduce-cost-per-treatment': 60,
-      'scalable-digital-enterprise': 90,
+      'reduce-cost-per-treatment': 80,
+      'scalable-digital-enterprise': 85,
     },
     kpis: GEMINI_KPIS,
     dependencies: [],
@@ -186,9 +249,9 @@ export const INITIAL_PROGRAM_LIBRARY: ProgramLibraryEntry[] = [
     timingDependency: false,
     dependencyContext: '',
     integrationHypothesis:
-      'GEMINI integrated from the start becomes the intelligence layer for the entire transformation, eliminating the need for program-level reporting built and then discarded by each stream.',
+      'Integrated design with Supply Chain connects manufacturing output directly to clinic inventory replenishment, eliminating a hand-off workstream. MES data on production capacity feeds the clinical supply planning model, enabling just-in-time replenishment across the Gemini plant network.',
     defaultTimeline: { startMonth: 1, durationMonths: 22 },
-    additionalContext: '',
+    additionalContext: 'Sub-initiatives: R6 NexStage — Care Enablement ERP & Process Design; MES for Gemini Plants & AMD Plant Templates.',
     notes: '',
     costAssumptions: {
       governanceCostBaseEurM: emptyInput(),
