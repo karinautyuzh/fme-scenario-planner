@@ -33,6 +33,9 @@ export interface ThoughtPartnerContext {
   totalSharedCostBenefitEurM?: number | null;
   activeKpisByProgram: Record<string, string[]>;
   standaloneValueByProgram: Record<string, number | null>;
+  overlapScore?: number;
+  overlapLevel?: string;
+  caseForConsolidationLevel?: string;
 }
 
 export interface IndustryInsight {

@@ -70,9 +70,7 @@ export function ExecutiveOverview() {
             The Value Hypothesis
           </div>
           <p style={{ fontFamily: 'Source Serif 4, serif', fontSize: 15, color: 'rgba(255,255,255,0.9)', lineHeight: 1.65, fontWeight: 300, fontStyle: 'italic' }}>
-            "Integrated design improves business outcomes{' '}
-            <strong style={{ fontWeight: 600, fontStyle: 'normal' }}>and</strong>{' '}
-            compresses the transformation — so FME starts realizing those outcomes sooner."
+            "Where FME's transformation programs materially overlap, integrated design and consolidated ownership can reduce duplication, stakeholder burden, and delivery risk — creating a more defensible path to the enterprise outcomes FME is already pursuing."
           </p>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { Scenario, ProgramLibraryEntry } from '../types';
 import { ScenarioEngineOutput } from '../engine/types';
 import { OUTCOMES } from '../data/outcomes';
 import ValueCurveChart from '../components/value/ValueCurveChart';
+import { computeOverlap, OverlapLevel } from '../engine/overlapEngine';
 
 // ─── Scorecard Dimensions ─────────────────────────────────────────────────────
 
@@ -631,6 +632,12 @@ export function RealizeValue() {
 
   const [expandedDim, setExpandedDim] = useState<string | null>(null);
   const [expandedProgram, setExpandedProgram] = useState<string | null>(null);
+  const [expandedOverlapDim, setExpandedOverlapDim] = useState<string | null>(null);
+
+  const overlapAnalysis = useMemo(
+    () => computeOverlap(selectedLib),
+    [selectedLib]
+  );
 
   const scorecard = useMemo(
     () => computeScorecard(activeScenario, library, engine),
@@ -770,10 +777,10 @@ export function RealizeValue() {
         )}
       </div>
 
-      {/* ── What Is Driving This Synergy ── */}
+      {/* ── What Is Driving the Integration Opportunity ── */}
       {drivingDims.length > 0 && (
         <>
-          <SectionLabel>What Is Driving This Synergy</SectionLabel>
+          <SectionLabel>What Is Driving the Integration Opportunity</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 2, marginBottom: 40 }}>
             {drivingDims.map((dim) => (
               <div
@@ -1098,6 +1105,35 @@ export function RealizeValue() {
                             </div>
                           )}
 
+                          {/* Execution KPI chips */}
+                          {(program.trainingPopulation || program.businessFteRequirement || program.itFteRequirement || program.customerImpact || program.supplierImpact || program.majorCutoverWindow) && (
+                            <div style={{ marginTop: 12 }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 6 }}>
+                                Execution Profile
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {program.trainingPopulation && program.trainingPopulation !== 'none' && (
+                                  <ExecChip label={`Training: ${program.trainingPopulation}`} color="var(--blue)" />
+                                )}
+                                {program.businessFteRequirement && (
+                                  <ExecChip label={`Biz FTE: ${program.businessFteRequirement}`} color="var(--teal)" />
+                                )}
+                                {program.itFteRequirement && (
+                                  <ExecChip label={`IT FTE: ${program.itFteRequirement}`} color="var(--teal)" />
+                                )}
+                                {program.customerImpact && program.customerImpact !== 'none' && (
+                                  <ExecChip label={`Customer: ${program.customerImpact}`} color="#7C3AED" />
+                                )}
+                                {program.supplierImpact && program.supplierImpact !== 'none' && (
+                                  <ExecChip label={`Supplier: ${program.supplierImpact}`} color="#7C3AED" />
+                                )}
+                                {program.majorCutoverWindow && (
+                                  <ExecChip label={`Cutover: ${program.majorCutoverWindow}`} color="#D97706" />
+                                )}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Shared flags */}
                           {(program.sharedData || program.sharedTechnology || program.sharedWorkforce || program.sharedChangePopulation) && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 12 }}>
@@ -1151,6 +1187,152 @@ export function RealizeValue() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Overlap Analysis ── */}
+      {overlapAnalysis.numPrograms >= 2 && overlapAnalysis.dimensions.length > 0 && (
+        <>
+          <SectionLabel>Overlap Analysis — Where Programs Intersect</SectionLabel>
+          <div style={{ marginBottom: 8, fontSize: 12, color: 'var(--grey-3)', lineHeight: 1.6, maxWidth: 720 }}>
+            The following dimensions are derived from the execution profiles entered in Program Intake. Overlap is computed, not assumed — low-overlap scenarios will not manufacture a strong integration conclusion.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 40 }}>
+            {overlapAnalysis.dimensions.map((dim) => {
+              const isExp = expandedOverlapDim === dim.id;
+              return (
+                <div key={dim.id} style={{ background: 'white', borderLeft: `4px solid ${overlapLevelColor(dim.level)}` }}>
+                  <div
+                    style={{ display: 'grid', gridTemplateColumns: '100px 1fr auto', gap: 20, alignItems: 'center', padding: '16px 24px', cursor: 'pointer' }}
+                    onClick={() => setExpandedOverlapDim(isExp ? null : dim.id)}
+                  >
+                    <div style={{ textAlign: 'center', padding: '8px 10px', background: overlapLevelBg(dim.level), borderRadius: 6 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: overlapLevelColor(dim.level), letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                        {dim.level.toUpperCase()}
+                      </div>
+                      <div style={{ fontSize: 9, color: overlapLevelColor(dim.level), opacity: 0.7, marginTop: 1 }}>{dim.score}/100</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 4 }}>{dim.label}</div>
+                      <div style={{ marginBottom: 6 }}>
+                        <ScoreBar score={dim.score} color={overlapLevelColor(dim.level)} />
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--grey-3)', lineHeight: 1.55 }}>{dim.evidence}</div>
+                    </div>
+                    <span style={{ fontSize: 12, color: 'var(--blue)', fontWeight: 600, flexShrink: 0 }}>{isExp ? '−' : '+'}</span>
+                  </div>
+                  {isExp && (
+                    <div style={{ borderTop: '1px solid var(--grey-0)', padding: '16px 24px 16px 148px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 6 }}>Potential Synergy</div>
+                        <div style={{ fontSize: 11, color: 'var(--grey-3)', lineHeight: 1.65 }}>{dim.potentialSynergy}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--navy)', marginBottom: 6 }}>What Must Be True</div>
+                        <div style={{ fontSize: 11, color: 'var(--navy)', lineHeight: 1.65 }}>· {dim.whatMustBeTrue}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* ── Case for Consolidated Ownership ── */}
+      {overlapAnalysis.numPrograms >= 2 && (
+        <>
+          <SectionLabel>Case for Consolidated Ownership</SectionLabel>
+          <div style={{ background: 'white', padding: '32px 36px', marginBottom: 40 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 32, flexWrap: 'wrap' }}>
+              {/* Level badge */}
+              <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 120 }}>
+                <div style={{
+                  padding: '16px 24px',
+                  background: overlapLevelBg(overlapAnalysis.caseLevel),
+                  border: `2px solid ${overlapLevelColor(overlapAnalysis.caseLevel)}`,
+                  borderRadius: 8,
+                  marginBottom: 8,
+                }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: overlapLevelColor(overlapAnalysis.caseLevel), letterSpacing: '0.04em' }}>
+                    {overlapAnalysis.caseLevel.toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: 10, color: overlapLevelColor(overlapAnalysis.caseLevel), marginTop: 2, opacity: 0.8 }}>
+                    CASE STRENGTH
+                  </div>
+                </div>
+                <div style={{ marginBottom: 4 }}>
+                  <ScoreBar score={overlapAnalysis.caseForConsolidation} color={overlapLevelColor(overlapAnalysis.caseLevel)} />
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--grey-2)' }}>{overlapAnalysis.caseForConsolidation}/100</div>
+                <div style={{ fontSize: 9, fontStyle: 'italic', color: 'var(--grey-2)', marginTop: 4, lineHeight: 1.4 }}>
+                  Derived from demonstrable overlap, not a default assumption.
+                </div>
+              </div>
+
+              {/* Rationale */}
+              <div style={{ flex: 1, minWidth: 280 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 10 }}>
+                  Assessment Rationale
+                </div>
+                <p style={{ fontFamily: 'Source Serif 4, serif', fontSize: 14, color: 'var(--navy)', lineHeight: 1.7, fontWeight: 300, marginBottom: 16 }}>
+                  {overlapAnalysis.caseRationale}
+                </p>
+                <div style={{ padding: '10px 14px', background: 'var(--grey-0)', borderLeft: '3px solid var(--grey-1)', borderRadius: '0 4px 4px 0', fontSize: 11, color: 'var(--grey-2)', lineHeight: 1.55 }}>
+                  <strong>Note:</strong> This assessment is derived from the execution data entered in Program Intake. Populate or update training population, FTE demand, cutover windows, and shared flag fields to refine this conclusion.
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Separate vs. Coordinated vs. Consolidated ── */}
+      {overlapAnalysis.numPrograms >= 2 && (
+        <>
+          <SectionLabel>Delivery Model Comparison</SectionLabel>
+          <div style={{ background: 'white', padding: '24px 28px', marginBottom: 40, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--grey-2)', borderBottom: '2px solid var(--grey-1)', width: '28%' }}>
+                    Dimension
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '10px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#991B1B', background: '#FEF2F2', borderBottom: '2px solid #FCA5A5', width: '24%' }}>
+                    Separate Delivery
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '10px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#92400E', background: '#FFFBEB', borderBottom: '2px solid #FDE68A', width: '24%' }}>
+                    Coordinated Delivery
+                  </th>
+                  <th style={{ textAlign: 'center', padding: '10px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#065F46', background: '#ECFDF5', borderBottom: '2px solid #6EE7B7', width: '24%' }}>
+                    Consolidated Ownership
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {DELIVERY_MODEL_ROWS.map((row, i) => (
+                  <tr key={row.dimension} style={{ background: i % 2 === 0 ? 'white' : 'var(--grey-0)' }}>
+                    <td style={{ padding: '10px 16px', fontWeight: 600, color: 'var(--navy)', borderBottom: '1px solid var(--grey-0)', verticalAlign: 'top' }}>
+                      {row.dimension}
+                    </td>
+                    <td style={{ padding: '10px 16px', color: '#7F1D1D', textAlign: 'center', borderBottom: '1px solid var(--grey-0)', verticalAlign: 'top', lineHeight: 1.55 }}>
+                      {row.separate}
+                    </td>
+                    <td style={{ padding: '10px 16px', color: '#78350F', textAlign: 'center', borderBottom: '1px solid var(--grey-0)', verticalAlign: 'top', lineHeight: 1.55 }}>
+                      {row.coordinated}
+                    </td>
+                    <td style={{ padding: '10px 16px', color: '#064E3B', textAlign: 'center', borderBottom: '1px solid var(--grey-0)', verticalAlign: 'top', lineHeight: 1.55 }}>
+                      {row.consolidated}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ marginTop: 12, fontSize: 10, color: 'var(--grey-2)', fontStyle: 'italic' }}>
+              This comparison is structural and independent of financial modeling. It represents FME's design choices, not Accenture's revenue assumptions.
             </div>
           </div>
         </>
@@ -1223,3 +1405,78 @@ function Tag({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
+
+function ExecChip({ label, color }: { label: string; color: string }) {
+  return (
+    <span style={{ fontSize: 10, fontWeight: 600, color, background: `${color}18`, border: `1px solid ${color}40`, padding: '2px 8px', borderRadius: 12, whiteSpace: 'nowrap' }}>
+      {label}
+    </span>
+  );
+}
+
+function overlapLevelColor(level: OverlapLevel): string {
+  if (level === 'high') return '#065F46';
+  if (level === 'medium') return 'var(--blue)';
+  if (level === 'low') return '#92400E';
+  return 'var(--grey-2)';
+}
+
+function overlapLevelBg(level: OverlapLevel): string {
+  if (level === 'high') return '#ECFDF5';
+  if (level === 'medium') return '#EBF4FF';
+  if (level === 'low') return '#FFFBEB';
+  return 'var(--grey-0)';
+}
+
+interface DeliveryModelRow {
+  dimension: string;
+  separate: string;
+  coordinated: string;
+  consolidated: string;
+}
+
+const DELIVERY_MODEL_ROWS: DeliveryModelRow[] = [
+  {
+    dimension: 'Governance',
+    separate: 'Independent steering per program. Separate escalation paths.',
+    coordinated: 'Shared steering forum. Program leads retain autonomy.',
+    consolidated: 'Single integrated governance with binding cross-program authority.',
+  },
+  {
+    dimension: 'Process Design',
+    separate: 'Parallel design workstreams. Risk of conflicting definitions.',
+    coordinated: 'Design checkpoints to align overlapping processes.',
+    consolidated: 'Co-located design teams. Single source of truth for shared processes.',
+  },
+  {
+    dimension: 'Change Management',
+    separate: 'Separate change waves per program. Higher stakeholder burden.',
+    coordinated: 'Coordinated change calendar. Some combined communications.',
+    consolidated: 'Single integrated adoption plan. One change wave where populations overlap.',
+  },
+  {
+    dimension: 'Training',
+    separate: 'Separate training programs per system. Duplication likely.',
+    coordinated: 'Coordinated scheduling. Some shared content where roles overlap.',
+    consolidated: 'Integrated training design. Shared materials and delivery for overlapping populations.',
+  },
+  {
+    dimension: 'Data & Integration',
+    separate: 'Point-to-point integrations. Risk of inconsistent data models.',
+    coordinated: 'Shared integration layer agreed. Programs align on key APIs.',
+    consolidated: 'Unified enterprise data model. Single integration architecture from day one.',
+  },
+  {
+    dimension: 'Cutover',
+    separate: 'Separate cutover events. Business disruption potentially overlapping.',
+    coordinated: 'Cutover calendar aligned. Shared hypercare where possible.',
+    consolidated: 'Integrated cutover plan. Shared hypercare team and shared war room.',
+  },
+  {
+    dimension: 'FTE Demand',
+    separate: 'SME time counted separately. Double-booking risk high.',
+    coordinated: 'Capacity planning shared. Some SME consolidation.',
+    consolidated: 'Pooled SME capacity. Business and IT FTE planned once across all programs.',
+  },
+];
+

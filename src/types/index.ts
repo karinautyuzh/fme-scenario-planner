@@ -77,6 +77,21 @@ export interface ProgramLibraryEntry {
     dataIntegrationCostBaseEurM: Assumption<number>;
     programResourceCostBaseEurM: Assumption<number>;
   };
+  // ── Execution & Stakeholder fields (optional — feed overlap engine) ──────────
+  trainingPopulation?: 'none' | 'small' | 'medium' | 'large' | null;
+  trainingPopulationCount?: number | null;
+  customerImpact?: 'none' | 'low' | 'medium' | 'high';
+  supplierImpact?: 'none' | 'low' | 'medium' | 'high';
+  businessFteRequirement?: 'low' | 'medium' | 'high' | null;
+  businessFteCount?: number | null;
+  itFteRequirement?: 'low' | 'medium' | 'high' | null;
+  itFteCount?: number | null;
+  majorCutoverWindow?: string;
+  businessFunctionsAffected?: string[];
+  sharedBusinessProcesses?: boolean;
+  sharedStakeholders?: boolean;
+  totalProgramCostEurM?: Assumption<number>;
+  totalExpectedValueEurM?: Assumption<number>;
 }
 
 // ─── Assumption Provenance ──────────────────────────────────────────────────

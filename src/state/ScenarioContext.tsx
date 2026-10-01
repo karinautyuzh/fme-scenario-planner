@@ -388,6 +388,21 @@ function loadFromStorage(): AppState | null {
     if (!Array.isArray(parsed.programLibrary) || !parsed.programLibrary.length) {
       parsed.programLibrary = JSON.parse(JSON.stringify(INITIAL_PROGRAM_LIBRARY));
     }
+    // Migrate: backfill new execution fields onto stored built-in library entries
+    for (const entry of parsed.programLibrary) {
+      const canonical = INITIAL_PROGRAM_LIBRARY.find((p) => p.id === entry.id);
+      if (canonical) {
+        if (entry.trainingPopulation === undefined) entry.trainingPopulation = canonical.trainingPopulation ?? null;
+        if (entry.customerImpact === undefined) entry.customerImpact = canonical.customerImpact ?? 'none';
+        if (entry.supplierImpact === undefined) entry.supplierImpact = canonical.supplierImpact ?? 'none';
+        if (entry.businessFteRequirement === undefined) entry.businessFteRequirement = canonical.businessFteRequirement ?? null;
+        if (entry.itFteRequirement === undefined) entry.itFteRequirement = canonical.itFteRequirement ?? null;
+        if (entry.majorCutoverWindow === undefined) entry.majorCutoverWindow = canonical.majorCutoverWindow ?? '';
+        if (entry.businessFunctionsAffected === undefined) entry.businessFunctionsAffected = canonical.businessFunctionsAffected ?? [];
+        if (entry.sharedBusinessProcesses === undefined) entry.sharedBusinessProcesses = canonical.sharedBusinessProcesses ?? false;
+        if (entry.sharedStakeholders === undefined) entry.sharedStakeholders = canonical.sharedStakeholders ?? false;
+      }
+    }
     // Migrate: add programValueInputs if missing from any scenario
     for (const s of parsed.scenarios) {
       if (!s.programValueInputs) {

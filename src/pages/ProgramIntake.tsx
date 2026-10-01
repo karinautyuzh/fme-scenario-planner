@@ -59,6 +59,15 @@ function blankProgram(): ProgramLibraryEntry {
       dataIntegrationCostBaseEurM: emptyInput(),
       programResourceCostBaseEurM: emptyInput(),
     },
+    trainingPopulation: null,
+    customerImpact: 'none',
+    supplierImpact: 'none',
+    businessFteRequirement: null,
+    itFteRequirement: null,
+    majorCutoverWindow: '',
+    businessFunctionsAffected: [],
+    sharedBusinessProcesses: false,
+    sharedStakeholders: false,
   };
 }
 
@@ -577,8 +586,93 @@ function ProgramEditForm({
           <LabeledInput label="Additional Dependency Context (optional)" value={p.dependencyContext} placeholder="Describe how this program depends on or enables others" onChange={(v) => onUpdate({ dependencyContext: v })} />
         </div>
 
-        {/* Section E: Value / Cost */}
-        <SectionHeader number="E" title="Value / Cost Assumptions" subtitle="Enter cost base assumptions for this program. All values are illustrative and require FME validation." />
+        {/* Section E: Execution & Stakeholders */}
+        <SectionHeader number="E" title="Execution & Stakeholders" subtitle="Qualitative inputs that feed the Overlap Analysis and Case for Consolidated Ownership. No financial detail required." />
+        <div style={{ marginBottom: 24 }}>
+          {/* Training Population */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 8 }}>Training Population Size</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {(['none', 'small', 'medium', 'large'] as const).map((v) => (
+                <button key={v} onClick={() => onUpdate({ trainingPopulation: v })}
+                  style={{ padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1.5px solid', borderColor: p.trainingPopulation === v ? 'var(--blue)' : 'var(--grey-1)', background: p.trainingPopulation === v ? 'var(--blue)' : 'white', color: p.trainingPopulation === v ? 'white' : 'var(--grey-3)', transition: 'all 0.12s' }}>
+                  {v === 'none' ? 'None' : v === 'small' ? 'Small (<100)' : v === 'medium' ? 'Medium (100–500)' : 'Large (500+)'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Business FTE */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 8 }}>Business FTE Demand</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {([null, 'low', 'medium', 'high'] as const).map((v) => (
+                <button key={String(v)} onClick={() => onUpdate({ businessFteRequirement: v })}
+                  style={{ padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1.5px solid', borderColor: p.businessFteRequirement === v ? 'var(--blue)' : 'var(--grey-1)', background: p.businessFteRequirement === v ? 'var(--blue)' : 'white', color: p.businessFteRequirement === v ? 'white' : 'var(--grey-3)', transition: 'all 0.12s' }}>
+                  {v === null ? 'Unknown' : v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* IT FTE */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 8 }}>IT FTE Demand</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {([null, 'low', 'medium', 'high'] as const).map((v) => (
+                <button key={String(v)} onClick={() => onUpdate({ itFteRequirement: v })}
+                  style={{ padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1.5px solid', borderColor: p.itFteRequirement === v ? 'var(--blue)' : 'var(--grey-1)', background: p.itFteRequirement === v ? 'var(--blue)' : 'white', color: p.itFteRequirement === v ? 'white' : 'var(--grey-3)', transition: 'all 0.12s' }}>
+                  {v === null ? 'Unknown' : v.charAt(0).toUpperCase() + v.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Customer & Supplier Impact */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 8 }}>Customer Impact</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {(['none', 'low', 'medium', 'high'] as const).map((v) => (
+                  <button key={v} onClick={() => onUpdate({ customerImpact: v })}
+                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1.5px solid', borderColor: p.customerImpact === v ? 'var(--teal)' : 'var(--grey-1)', background: p.customerImpact === v ? 'var(--teal)' : 'white', color: p.customerImpact === v ? 'white' : 'var(--grey-3)', transition: 'all 0.12s' }}>
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--grey-2)', marginBottom: 8 }}>Supplier Impact</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {(['none', 'low', 'medium', 'high'] as const).map((v) => (
+                  <button key={v} onClick={() => onUpdate({ supplierImpact: v })}
+                    style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', border: '1.5px solid', borderColor: p.supplierImpact === v ? 'var(--teal)' : 'var(--grey-1)', background: p.supplierImpact === v ? 'var(--teal)' : 'white', color: p.supplierImpact === v ? 'white' : 'var(--grey-3)', transition: 'all 0.12s' }}>
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Shared flags */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+            {([
+              { field: 'sharedBusinessProcesses', label: 'Shared Business Processes?' },
+              { field: 'sharedStakeholders', label: 'Shared Stakeholders / Governance?' },
+            ] as { field: keyof ProgramLibraryEntry; label: string }[]).map(({ field, label }) => (
+              <label key={field} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer', padding: '8px 12px', background: p[field] ? '#EBF4FF' : 'var(--grey-0)', borderRadius: 4 }}>
+                <input type="checkbox" checked={!!p[field]} onChange={() => onUpdate({ [field]: !p[field] })} style={{ accentColor: 'var(--blue)' }} />
+                <span style={{ color: 'var(--navy)' }}>{label}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* Cutover window */}
+          <LabeledInput label="Major Cutover Window (optional)" value={p.majorCutoverWindow ?? ''} placeholder="e.g. Q2 2027" onChange={(v) => onUpdate({ majorCutoverWindow: v })} />
+        </div>
+
+        {/* Section F: Value / Cost */}
+        <SectionHeader number="F" title="Value / Cost Assumptions" subtitle="Enter cost base assumptions for this program. All values are illustrative and require FME validation." />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <NumberInput label="Governance Cost Base" unit="€M" value={p.costAssumptions.governanceCostBaseEurM.value} placeholder="Enter FME value" illustrative={p.isBuiltIn} onChange={(v) => onUpdate({ costAssumptions: { ...p.costAssumptions, governanceCostBaseEurM: { ...p.costAssumptions.governanceCostBaseEurM, value: v, source: 'user-input' } } })} />
           <NumberInput label="Change Management Cost Base" unit="€M" value={p.costAssumptions.changeCostBaseEurM.value} placeholder="Enter FME value" illustrative={p.isBuiltIn} onChange={(v) => onUpdate({ costAssumptions: { ...p.costAssumptions, changeCostBaseEurM: { ...p.costAssumptions.changeCostBaseEurM, value: v, source: 'user-input' } } })} />

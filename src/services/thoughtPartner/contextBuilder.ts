@@ -1,6 +1,7 @@
 import { Scenario, ProgramLibraryEntry } from '../../types';
 import { ScenarioEngineOutput } from '../../engine/types';
 import { ThoughtPartnerContext, SuggestedPrompt, ThoughtPartnerIntent } from './types';
+import { computeOverlap } from '../../engine/overlapEngine';
 
 export function buildThoughtPartnerContext(
   scenario: Scenario,
@@ -30,6 +31,9 @@ export function buildThoughtPartnerContext(
     }
   }
 
+  const selectedLib = programLibrary.filter((p) => scenario.selectedPrograms.includes(p.id));
+  const overlapAnalysis = computeOverlap(selectedLib);
+
   return {
     scenarioName: scenario.metadata.name,
     isBaseCaseLocked: scenario.isBaseCaseLocked,
@@ -54,6 +58,9 @@ export function buildThoughtPartnerContext(
     totalSharedCostBenefitEurM,
     activeKpisByProgram,
     standaloneValueByProgram,
+    overlapScore: overlapAnalysis.overallScore,
+    overlapLevel: overlapAnalysis.overallLevel,
+    caseForConsolidationLevel: overlapAnalysis.caseLevel,
   };
 }
 
@@ -141,6 +148,16 @@ const PROMPT_SPECS: PromptSpec[] = [
     show: (ctx) =>
       ctx.selectedProgramIds.includes('ehr-patient-care') &&
       (ctx.standaloneValueByProgram?.['EHR'] ?? null) !== null,
+  },
+  {
+    text: 'What is driving the overlap score and how strong is the case for consolidated ownership?',
+    intent: 'VALUE_DRIVERS',
+    show: (ctx) => ctx.selectedProgramCount >= 2 && (ctx.overlapScore ?? 0) > 0,
+  },
+  {
+    text: 'Which overlap dimensions are highest and what do they mean for program design?',
+    intent: 'VALUE_DRIVERS',
+    show: (ctx) => ctx.selectedProgramCount >= 2 && ctx.overlapLevel !== 'none',
   },
 ];
 
